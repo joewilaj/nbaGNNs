@@ -1,7 +1,7 @@
 # nbaGNNs
 
 This project is an implementation of several Graph Neural Network models for link prediction on the weighted, directed NBA point-differential
-graph for the 2013-2019, 2021 seasons. See models.py for implematation. 
+graph for the 2013-2019, 2021 seasons. Run models.py to select train, and test a model. 
 
 The input to the models are graphs: One graph has nba offenses and defenses as nodes, and edges representing interactions between them, weighted and directed according to several game statistics. The other graph has teams as nodes and its weighted directed edges represent vegas point spreads.Four Factors statistics (https://www.basketball-reference.com/about/factors.html) and point differential are weighted the most in the offense/defense graph. All graphs are row normalized to facilitate random walks. Game statistics were obtained from basketball-reference via https://github.com/roclark/sportsipy, and Vegas lines were obtained from Bovada via https://www.kaggle.com/erichqiu/nba-odds-and-scores. As a preproccessing step, The Oracle Adjustment is applied as described in 'An Oracle method to predict NFL games' (2012 Balreira, Miceli, Tegtmeyer, #http://ramanujan.math.trinity.edu/bmiceli/research/NFLRankings_revised_print.pdf) to enhance the random walks.
 
