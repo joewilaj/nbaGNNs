@@ -1,0 +1,15 @@
+
+
+python => 3.7.0
+tensorflow >= 2.2
+keras == 2.3.1
+gensim == 3.8.1
+networkx == 2.4
+scipy == 1.4.1
+numpy == 1.19.2
+spektral >= 1.0
+pandas
+gemsim
+matplotlib
+pickle
+
