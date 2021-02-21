@@ -26,6 +26,7 @@ import tensorboard
 
 
 
+
 from tensorflow.keras import backend as K
 from tensorflow.keras import layers, initializers
 from keras.engine.topology import Layer
@@ -188,14 +189,14 @@ def nba_ARMA(node2vec_dim):
 
 
 
-    ARMA = spektral.layers.ARMAConv(channels, order=2, iterations=1, share_weights=False, gcn_activation='relu', 
+    ARMA = spektral.layers.ARMAConv(channels, order=4, iterations=1, share_weights=False, gcn_activation='relu', 
                             dropout_rate=0.3, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
                             kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, 
                             kernel_constraint=None, bias_constraint=None)([node2vec_input,A_input])
 
 
 
-    ARMA_Veg = spektral.layers.ARMAConv(channels, order=2, iterations=1, share_weights=False, gcn_activation='relu', 
+    ARMA_Veg = spektral.layers.ARMAConv(channels, order=4, iterations=1, share_weights=False, gcn_activation='relu', 
                             dropout_rate=0.3, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
                             kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, 
                             kernel_constraint=None, bias_constraint=None)([node2vec_Veg_input,A_Veg_input])
@@ -230,6 +231,71 @@ def nba_ARMA(node2vec_dim):
     return model
 
 
+def nba_gin(node2vec_dim):
+
+    channels = 30                                    
+    dropout_rate = 0.1            
+    l2_reg = 5e-3/2               
+
+
+    node2vec_input = Input(shape=(62,node2vec_dim))  
+    node2vec_Veg_input = Input(shape=(31,node2vec_dim))
+    A_input = Input(shape=(62,62))
+    A_Veg_input = Input(shape=(31,31))
+
+    team_inputs = Input(shape=(2,),dtype = tf.int64)
+    line_input = Input(shape=(1,))
+    last_5_input = Input(shape = (10,))
+
+
+    A_input_sp = extract_team_GAT.To_Sparse()(A_input)
+    A_Veg_input_sp = extract_team_GAT.To_Sparse()(A_Veg_input)
+
+
+
+
+
+    GIN = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation=None, 
+                                  use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                  bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
+                                  bias_constraint=None)([node2vec_input,A_input_sp])
+
+
+
+    GIN_Veg = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation=None, 
+                                  use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                  bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
+                                  bias_constraint=None)([node2vec_Veg_input,A_Veg_input_sp])
+
+
+    #extracts nodes for link prediction
+
+
+    game_vec = extract_team_GAT.Game_Vec(channels)([team_inputs,GIN,GIN_Veg])
+
+
+
+    dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
+    drop1 = Dropout(.2)(dense1)
+
+    dense2 = Dense(int(np.floor(channels/6)),activation = 'tanh')(drop1)
+    drop2 = Dropout(.1)(dense2)
+
+    drop2 = Reshape((int(np.floor(channels)),))(drop2)
+
+    drop2 = Concatenate()([drop2,last_5_input])
+
+    dense3 = Dense(int(np.floor(channels)))(drop2)
+    drop3 = Dropout(.05)(dense3)
+
+    add_line = Concatenate()([drop3,line_input])
+
+    prediction = Dense(1)(add_line)
+
+    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input], outputs = prediction)
+
+    return model
+
 
 
 
@@ -239,14 +305,15 @@ def main():
 
 
     #model_type = 'nbawalkod'
-    model_type = 'nba_gat'
+    #model_type = 'nba_gat'
     #model_type = 'nba_ARMA'
+    model_type = 'nba_gin'
 
     print(model_type)
 
 
 
-    year = 2014
+    year = 2021
 
     print(year)
 
@@ -254,8 +321,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,4,15)
-    stopdate = datetime.datetime(year,6,25)
+    startdate = datetime.datetime(year,2,20)
+    stopdate = datetime.datetime(year,2,21)
 
     start_day = (startdate-datetime.datetime(year-1,10,12)).days
     stop_day = (stopdate-datetime.datetime(year-1,10,12)).days
@@ -314,7 +381,7 @@ def main():
     total_wins = 0
     money_line_wins = 0
     moneyline_count = 0
-    window = 1  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
+    window = 2  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
     push = 0
     ties = 0
 
@@ -343,10 +410,17 @@ def main():
             #Balreira, Miceli, Tegtmeyer,  An Oracle method to predict NFL games,
             #http://ramanujan.math.trinity.edu/bmiceli/research/NFLRankings_revised_print.pdf
 
+            #using data from https://github.com/roclark/sportsipy 
+
             #Vegas Graphs are constructed using the vegas lines to construct the a point differential graph
+            #using data from https://www.kaggle.com/erichqiu/nba-odds-and-scores
 
 
             S_OffDef, A_OffDef = construct_from_data.construct_S_orc(Data_Full,schedule,HomeAway,weights,day)
+
+
+
+
             Vegas_Graph = construct_from_data.Vegas_Graph(schedule,Lines,day)
             A_Veg = A_OffDef[0:31,31:62]
 
@@ -375,7 +449,7 @@ def main():
 
 
 
-            if model_type == 'nbawalkod' or model_type == 'nba_gat' or model_type == 'nba_ARMA':
+            if model_type == 'nbawalkod' or model_type == 'nba_gat' or model_type == 'nba_ARMA' or model_type == 'nba_gin':
 
                 G_orc = (1-epsilon)*(S_OffDef) + epsilon*(1/62)*np.ones((62,62),dtype = float)
                 G_orc = utils_data.sto_mat(G_orc)
@@ -442,6 +516,13 @@ def main():
                                                                                                                     day,feature_node2vec,
                                                                                                                     ARMA,feature_node2vec_Veg,ARMA_Veg)
 
+                elif model_type == 'nba_gin':
+
+                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train, last_5_train = construct_from_data.gin_training_set(Data_Full,
+                                                                                                                    Lines,schedule,HomeAway,
+                                                                                                                    day,feature_node2vec,
+                                                                                                                    ARMA,feature_node2vec_Veg,ARMA_Veg)
+
 
 
             call_backs = EarlyStopping(monitor='val_loss', min_delta=0, patience=150, verbose=1, restore_best_weights= True)
@@ -463,15 +544,23 @@ def main():
                 model = nba_gat(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 20,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_ARMA':
                 model = nba_ARMA(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 20,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
+
+            elif model_type == 'nba_gin':
+                model = nba_gin(node2vec_dim)
+                model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
+                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
+                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                model.summary()
+
 
 
             
@@ -516,6 +605,19 @@ def main():
                     Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
+
+            elif model_type == 'nba_gin':
+
+                
+
+                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y = construct_from_data.gin_test_set(Data_Full,games,
+                                                                                                                testgamecount,feature_node2vec,
+                                                                                                                A_OffDef,feature_node2vec_Veg,A_Veg,day,year)
+
+                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],batch_size=1)
+                if year < 2021:
+                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],test_y,verbose=0,batch_size=1)
+                    loss = loss + Eval[0]
 
 
 
