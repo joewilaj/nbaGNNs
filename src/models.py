@@ -229,6 +229,13 @@ def nba_ARMA(node2vec_dim):
     model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input], outputs = prediction)
 
     return model
+   
+   
+   
+#Graph Isomorphism Network (gin)   
+#Hu, Leskovec, Jegelka, Xu. How Powerful are Graph Neural Networks?. 1 Oct 2018. arXiv:1810.00826v3 [cs.LG]
+
+#implemented with https://github.com/danielegrattarola/spektral
 
 
 def nba_gin(node2vec_dim):
