@@ -29,3 +29,17 @@ class Game_Vec(Layer):
 
         return game_vec
 
+
+class To_Sparse(Layer):
+
+    def __init__(self,):
+        super(To_Sparse,self).__init__()
+
+    def call(self,inputs):
+
+
+        sparse_t = tf.sparse.from_dense(inputs[0], name = 'adj_mat')
+
+
+        return sparse_t
+
