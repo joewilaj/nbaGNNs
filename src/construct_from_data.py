@@ -1259,6 +1259,30 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
          + weights[0,5]*FTA + weights[0,6]*Ast + weights[0,8]*P100 \
          + weights[0,9]*TOoff + weights[0,10]*TS
 
+
+    for i in range(ObyD.shape[0]):
+        nzc = np.count_nonzero(ObyD[i,:])
+
+        if nzc != 0:
+            mu = np.sum(ObyD[i,:])/nzc
+
+            for j in range(ObyD.shape[1]):
+                if ObyD[i,j] != 0:
+                    ObyD[i,j] = 1/(1+ np.exp(-1000*(ObyD[i,j]-mu)))
+
+
+    for i in range(DbyO.shape[0]):
+        nzc = np.count_nonzero(DbyO[i,:])
+
+        if nzc != 0:
+            mu = np.sum(DbyO[i,:])/nzc
+
+            for j in range(DbyO.shape[1]):
+                if DbyO[i,j] != 0:
+                    DbyO[i,j] = 1/(1 + np.exp(-1000*(DbyO[i,j]-mu)))
+
+
+
     
     #Concatentate Off and Def statistic matrices with zeros to create SOffDef
 
@@ -1266,6 +1290,14 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
     S_orc_DbyO = np.concatenate((DbyO,np.zeros((31,31),dtype = float)),axis = 1)
 
     S_OffDef = np.concatenate((S_orc_ObyD,S_orc_DbyO),axis = 0)
+
+
+    for i in range(S_OffDef.shape[0]):
+        for j in range(S_OffDef.shape[1]):
+            if S_OffDef[i,j] != 0 and S_OffDef[i,j] < 0.01:
+                S_OffDef[i,j] = 0
+
+
 
     A_OffDef = np.zeros((62,62),dtype = float)
 
@@ -1279,6 +1311,8 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
 
 
     S_OffDef = utils_data.sto_mat(S_OffDef)
+
+
 
     return S_OffDef, A_OffDef
 
@@ -1654,7 +1688,119 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
 
     return x_train,y_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train
 
+def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg):
+
+    gamecount_train = 0
+
+    x_train = np.zeros((3000,2),dtype = int)
+    y_train = np.zeros((3000,),dtype = float)
+    line_train = np.zeros((3000,),dtype = float)
+    feature_train = np.zeros((3000,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
+    feature_Veg_train = np.zeros((3000,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
+    A_Train = np.zeros((3000,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
+    A_Veg_train = np.zeros((3000,A_Veg.shape[0],A_Veg.shape[1]),dtype = int)
+    last_5_train = np.zeros((3000,10),dtype = float)
+
+    #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
+
+
+    for k in range(30):
+        for j in range(day):
+            if HomeAway[k,j] == 2:
+
+                gamecount_train = gamecount_train + 1
+                opponent = schedule[k,j]
+                game = Data_Full[j,0,k]
+                x_train[gamecount_train-1,0] = k
+                x_train[gamecount_train-1,1] = int(opponent)
+
+                y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
+
+                line_train[gamecount_train-1] = Lines[k,j]
+
+
+
+                A_Train[gamecount_train-1,:,:] = A_OffDef
+                A_Veg_train[gamecount_train-1,:,:] = A_Veg
+                A_Train[gamecount_train-1,k,opponent+31] = 0
+                A_Train[gamecount_train-1,k+31,opponent] = 0
+                A_Train[gamecount_train-1,opponent,k+31] = 0
+                A_Train[gamecount_train-1,opponent+31,k] = 0
+                feature_train[gamecount_train-1,:,:] = feature_node2vec
+                feature_Veg_train[gamecount_train-1,:,:] = feature_node2vec_Veg
+
+                if game > 5:
+                    last_5 = Data_Full[(j-6):(j-1),0,k]
+                    last_5_opp = Data_Full[(j-6):(j-1),0,opponent]
+
+                    for q in range(5):
+                        if last_5[q] != 0:
+                            last_5[q] = 1
+                        if last_5_opp[q] != 0:
+                            last_5_opp[q] = 1
+
+
+                    last_5_train[gamecount_train-1,:] = np.concatenate((last_5,last_5_opp),axis = -1)
+
+                
+
+                
+
+
+    y_train = y_train[0:gamecount_train]
+    line_train = line_train[0:gamecount_train]
+    x_train = x_train[0:gamecount_train,:]
+    A_Train = A_Train[0:gamecount_train,:,:]
+    A_Veg_train = A_Veg_train[0:gamecount_train,:,:]
+    feature_train = feature_train[0:gamecount_train,:,:]
+    feature_Veg_train = feature_Veg_train[0:gamecount_train,:,:] 
+    last_5_train = last_5_train[0:gamecount_train,:]
+
+
+    return x_train,y_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train
+
 def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,day,year):
+
+    feature_test = np.zeros((testgamecount,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
+    feature_Veg_test = np.zeros((testgamecount,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
+
+    A_Test = np.zeros((testgamecount,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
+    A_Veg_Test = np.zeros((testgamecount,A_Veg.shape[0],A_Veg.shape[1]),dtype = int)
+
+    x_test = np.zeros((testgamecount,2),dtype = float)
+    line_test = np.zeros((testgamecount,),dtype = float)
+    last_5_test = np.zeros((testgamecount,10),dtype = float)
+    test_y = np.zeros((testgamecount,),dtype = float)
+
+    for i in range(testgamecount):
+        x_test[i,0] = games[i,0]
+        x_test[i,1] = games[i,1]
+        line_test[i] = games[i,2]
+
+        if year < 2021:
+            test_y[i] = games[i,4] - games[i,5]
+
+        A_Test[i,:,:] = A_OffDef
+        A_Veg_Test[i,:,:] = A_Veg
+        feature_test[i,:,:] = feature_node2vec
+        feature_Veg_test[i,:,:] = feature_node2vec_Veg
+
+        if games[i,6] > 5:
+            last_5 = Data_Full[(day-5):day,0,games[i,0]]
+            last_5_opp = Data_Full[(day-5):day,0,games[i,1]]
+
+            for q in range(5):
+                if last_5[q] != 0:
+                    last_5[q] = 1
+                if last_5_opp[q] != 0:
+                    last_5_opp[q] = 1
+
+
+            last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
+
+    return x_test,line_test,feature_test,A_Test,feature_Veg_test,A_Veg_Test,last_5_test, test_y
+
+def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,day,year):
 
     feature_test = np.zeros((testgamecount,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     feature_Veg_test = np.zeros((testgamecount,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
