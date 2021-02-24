@@ -328,8 +328,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,2,20)
-    stopdate = datetime.datetime(year,2,21)
+    startdate = datetime.datetime(year,2,23)
+    stopdate = datetime.datetime(year,2,24)
 
     start_day = (startdate-datetime.datetime(year-1,10,12)).days
     stop_day = (stopdate-datetime.datetime(year-1,10,12)).days
