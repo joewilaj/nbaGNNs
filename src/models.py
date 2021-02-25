@@ -97,7 +97,7 @@ def DCNN_nbawalkod(height,node2vec_dim):
 
 def nba_gat(node2vec_dim):
 
-    channels = 30                       
+    channels = 40                       
     n_attn_heads = 3              
     dropout_rate = 0.3            
     l2_reg = 5e-4/2               
@@ -172,7 +172,7 @@ def nba_gat(node2vec_dim):
 
 def nba_ARMA(node2vec_dim):
 
-    channels = 30                                    
+    channels = 30                                   
     dropout_rate = 0.1            
     l2_reg = 5e-3/2               
 
@@ -229,18 +229,11 @@ def nba_ARMA(node2vec_dim):
     model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input], outputs = prediction)
 
     return model
-   
-   
-   
-#Graph Isomorphism Network (gin)   
-#Hu, Leskovec, Jegelka, Xu. How Powerful are Graph Neural Networks?. 1 Oct 2018. arXiv:1810.00826v3 [cs.LG]
-
-#implemented with https://github.com/danielegrattarola/spektral
 
 
 def nba_gin(node2vec_dim):
 
-    channels = 30                                    
+    channels = 40                                    
     dropout_rate = 0.1            
     l2_reg = 5e-3/2               
 
@@ -285,10 +278,10 @@ def nba_gin(node2vec_dim):
     dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
     drop1 = Dropout(.2)(dense1)
 
-    dense2 = Dense(int(np.floor(channels/6)),activation = 'tanh')(drop1)
+    dense2 = Dense(int(np.floor(channels/4)),activation = 'tanh')(drop1)
     drop2 = Dropout(.1)(dense2)
 
-    drop2 = Reshape((int(np.floor(channels)),))(drop2)
+    drop2 = Reshape((int(np.floor(1.5*channels)),))(drop2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
@@ -311,10 +304,10 @@ def main():
     #select model type and year
 
 
-    #model_type = 'nbawalkod'
+    model_type = 'nbawalkod'
     #model_type = 'nba_gat'
     #model_type = 'nba_ARMA'
-    model_type = 'nba_gin'
+    #model_type = 'nba_gin'
 
     print(model_type)
 
@@ -328,8 +321,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,2,23)
-    stopdate = datetime.datetime(year,2,24)
+    startdate = datetime.datetime(year,2,24)
+    stopdate = datetime.datetime(year,2,25)
 
     start_day = (startdate-datetime.datetime(year-1,10,12)).days
     stop_day = (stopdate-datetime.datetime(year-1,10,12)).days
@@ -396,6 +389,8 @@ def main():
     runs = 0
 
 
+    test_games_all = np.zeros((1300,8),dtype = object)
+    test_count = 0
 
     #For each day a game occurs, the model constructs a training and validation set using all games played previously in the season
     #The model is tested on games occuring the current day     
@@ -443,14 +438,14 @@ def main():
             #hyperparameters for node2vec
             #Grover, Leskovec, node2vec: Scalable Feature Learning for Networks, July 3, 2016 #arXiv:1607.00653v1 [cs.SI]
 
-            node2vec_dim = 20
+            node2vec_dim = 30
             node2vec_p = 1
             node2vec_q = 1
 
-            height = 4
-            n2v_walklen = 10
-            n2v_numwalks = 20
-            n2v_wsize = 8
+            height = 6
+            n2v_walklen = 6
+            n2v_numwalks = 15
+            n2v_wsize = 5
             n2v_iter = 1
             n2v_workers = 8
 
@@ -543,7 +538,7 @@ def main():
                 model = DCNN_nbawalkod(height,node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,last_5_train],y_train, 
-                            epochs = 20, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
+                            epochs = 5, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
             
                 model.summary()
 
@@ -631,6 +626,11 @@ def main():
             results= np.round(Pred,decimals = 1)
             games = np.concatenate((games,Pred),axis = 1)
 
+            test_count = test_count + games.shape[0]
+
+            test_games_all[(test_count - games.shape[0]):test_count,:] = games 
+
+
             gameteams = np.concatenate((gameteams,results),axis = 1)
 
 
@@ -651,6 +651,12 @@ def main():
             push = bet_stats[7]
             ties = bet_stats[8]
 
+
+    test_games_all = test_games_all[~np.all(test_games_all == 0, axis=1)]
+
+    utils_data.eval_plots(test_games_all,window)
+
+
     #Evaluate model against Vegas
 
 
@@ -659,14 +665,14 @@ def main():
         ats_win_percentage = ats_wins/(ats_bets - push)
         moneyline_win_percentage = money_line_wins/(moneyline_count - ties)
 
-        print(round(ats_win_percentage,3))
-        print(round(moneyline_win_percentage,3))
+        print('ats win %: ' + str(round(ats_win_percentage,3)))
+        print('ml win %: ' + str(round(moneyline_win_percentage,3)))
         
         if year < 2021:
-            print(round((loss/runs),1))
+            print('MSE: '  + str(round((loss/runs),1)))
 
 
-        pdb.set_trace()
+
 
 
 

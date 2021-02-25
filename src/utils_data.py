@@ -12,6 +12,7 @@ import tensorflow as tf
 import keras
 import warnings
 import pdb
+import matplotlib
 import matplotlib.pyplot as plt
 import datetime
 
@@ -31,6 +32,7 @@ from random import seed
 from random import randint
 from mpl_toolkits.mplot3d.proj3d import proj_transform
 from matplotlib.text import Annotation
+from matplotlib import colors
 from sklearn.cluster import KMeans
 
 
@@ -289,6 +291,95 @@ def lines2xls():
     df.to_excel('data/2021Lines.xls', index=False)
 
     return
+
+
+
+
+def eval_plots(test_games_all,window):
+
+    freq_count_wins = np.zeros((30,),dtype = float)
+    freq_count_losses = np.zeros((30,),dtype = float)
+
+    for i in range(test_games_all.shape[0]):
+
+        if (test_games_all[i,4] !=0 or test_games_all[i,5] !=0) and (test_games_all[i,4] is not None):
+
+            if abs(((test_games_all[i,4]-test_games_all[i,5])-test_games_all[i,2])) > window:
+                pos = int(np.floor(test_games_all[i,2]))
+
+                if test_games_all[i,4]-test_games_all[i,5] > test_games_all[i,2] and test_games_all[i,7] > test_games_all[i,2]:
+
+                    if pos >= 15:
+                        freq_count_wins[29] = freq_count_wins[29] + 1
+
+                    elif pos <= -15:
+                        freq_count_wins[0] = freq_count_wins[0] + 1
+
+                    elif abs(pos) <= 14:
+                        freq_count_wins[pos+14] = freq_count_wins[pos+14] + 1
+
+
+                elif test_games_all[i,4]-test_games_all[i,5] < test_games_all[i,2] and test_games_all[i,7] < test_games_all[i,2]:
+
+                    if pos >= 15:
+                        freq_count_wins[29] = freq_count_wins[29] + 1
+
+                    elif pos <= -15:
+                        freq_count_wins[0] = freq_count_wins[0] + 1
+
+                    elif abs(pos) <= 14:
+                        freq_count_wins[pos+14] = freq_count_wins[pos+14] + 1
+
+
+                elif test_games_all[i,4]-test_games_all[i,5] == test_games_all[i,2]:
+                    pass
+
+
+                else:
+
+                    if pos >= 15:
+                        freq_count_losses[29] = freq_count_losses[29] + 1
+
+                    elif pos <= -15:
+                        freq_count_losses[0] = freq_count_losses[0] + 1
+
+                    elif abs(pos) <= 14:
+                        freq_count_losses[pos+14] = freq_count_losses[pos+14] + 1
+
+
+    labels = np.zeros((30,),dtype = object)
+
+    labels[0] = '-15'
+    labels[29] = '15'
+
+    for i in range(28):
+        labels[i+1] = str(i-14)
+
+    x = np.arange(len(labels))
+
+    width = 0.35  
+    
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(x - width/2, freq_count_wins, width, label='Wins',color = 'lawngreen')
+    rects2 = ax.bar(x + width/2, freq_count_losses, width, label='Losses',color = 'tomato')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_xlabel('Vegas Spread')
+    ax.set_title('Model ATS')
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.legend()
+
+
+
+
+    fig.tight_layout()
+    plt.show()
+
+    return
+
+
+
 
 
 
