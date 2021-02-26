@@ -669,7 +669,7 @@ def main():
 
     test_games_all = test_games_all[~np.all(test_games_all == 0, axis=1)]
 
-    if today < day + 1:
+    if today != day + 1:
         utils_data.eval_plots(test_games_all,window)
 
     print(model_type)
