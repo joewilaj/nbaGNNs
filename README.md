@@ -7,16 +7,9 @@ The input to the models are graphs representing the state of the season on a giv
 
 Next, [_node2vec_](https://snap.stanford.edu/node2vec/) (2016, Grover, Leskovec) is applied to the graphs to compute a feature representation of all offense and defense nodes, and all teams in the Vegas graph. Then the graphs along with the node2vec representations are passed to one of 4 graph convolutional layers described in [_Diffusion Convolutional Neural Network_](https://arxiv.org/pdf/1511.02136.pdf) (2016, Atwood, Towsely), [_Graph Attention Networks_](https://arxiv.org/pdf/1710.10903.pdf) (2018 Velickovic, Cucurull, Casanova, Romero, Lio, Bengio), [_Graph Neural Networks with Convolutional ARMA Filters_](https://arxiv.org/pdf/1901.01343.pdf) (2019 Bianchi, Grattarola, Livi, Alippi), and [_How Powerful are Graph Neural Networks?_](https://arxiv.org/abs/1810.00826) (2018, Hu, Leskovec, Jegelka, Xu). These layers are implemented using [_spektral_](https://github.com/danielegrattarola/spektral).
 
-After the new node representations are computed, the representation of both offenses and defenses, along with both teams' representation in the Vegas graph, are passed to a regression neural network to predict the score differential of a game. The model is tested during the selected year and day range, and its win percentage against the spread and against the moneyline are printed along with its MSE for the games in the testing range. Model predictions for each model for the 2021 season can be found in the predictions folder.
+After the new node representations are computed, the representation of both offenses and defenses, along with both teams' representation in the Vegas graph, are passed to a regression neural network to predict the score differential of a game. The model is tested during the selected year and day range, and its win percentage against the spread and against the moneyline are printed along with its MSE for the games in the testing range. Model predictions for each model for the 2021 season can be found in the predictions folder. The prediction printed is (Home Score - Away Score).
 
 [Set up the environment](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) using deepnba.yml:
 
 conda env create -f deepnba.yml
-
-
-
-
-
-
-
 
