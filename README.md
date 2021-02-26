@@ -14,7 +14,9 @@ After the new node representations are computed, the representation of both offe
 conda env create -f deepnba.yml
 
 
-Predictions for the current day for each model can be found in the predictions folder
+Model predictions for each model for the 2021 season can be found in the predictions folder
+
+
 
 
 
