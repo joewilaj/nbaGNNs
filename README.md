@@ -9,5 +9,7 @@ Next, [_node2vec_](https://snap.stanford.edu/node2vec/) (2016, Grover, Leskovec)
 
 After the new node representations are computed, the representation of both offenses and defenses, along with both teams' representation in the Vegas graph, are passed to a regression neural network to predict the score differential of a game. The model is tested during the selected year and day range, and its win percentage against the spread and against the moneyline are printed along with its MSE for the games in the testing range. 
 
-[Set up the environment](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) using deepnba.yml. 
+[Set up the environment](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) using deepnba.yml:
+
+conda env create -f deepnba.yml
 
