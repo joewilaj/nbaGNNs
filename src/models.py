@@ -304,29 +304,31 @@ def main():
     #select model type and year
 
 
-    model_type = 'nbawalkod'
+    
+    #model_type = 'nbawalkod'
     #model_type = 'nba_gat'
     #model_type = 'nba_ARMA'
-    #model_type = 'nba_gin'
-
-    print(model_type)
-
+    model_type = 'nba_gin'
 
 
     year = 2021
 
-    print(year)
+
 
 
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,2,24)
-    stopdate = datetime.datetime(year,2,25)
+    startdate = datetime.datetime(year,2,25)
+    stopdate = datetime.datetime(year,2,26)
 
     start_day = (startdate-datetime.datetime(year-1,10,12)).days
     stop_day = (stopdate-datetime.datetime(year-1,10,12)).days
 
+    now = datetime.datetime.now()
+    datestring = now.strftime("%m_%d_%Y")
+
+    today = (now-datetime.datetime(year-1,10,12)).days
 
 
     TeamLists = pd.read_excel('data/TeamLists.xls',sheet_name = 0,header = None)
@@ -438,14 +440,14 @@ def main():
             #hyperparameters for node2vec
             #Grover, Leskovec, node2vec: Scalable Feature Learning for Networks, July 3, 2016 #arXiv:1607.00653v1 [cs.SI]
 
-            node2vec_dim = 30
+            node2vec_dim = 50
             node2vec_p = 1
             node2vec_q = 1
 
             height = 6
-            n2v_walklen = 6
-            n2v_numwalks = 15
-            n2v_wsize = 5
+            n2v_walklen = 15
+            n2v_numwalks = 20
+            n2v_wsize = 10
             n2v_iter = 1
             n2v_workers = 8
 
@@ -538,7 +540,7 @@ def main():
                 model = DCNN_nbawalkod(height,node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,last_5_train],y_train, 
-                            epochs = 5, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
+                            epochs = 8, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
             
                 model.summary()
 
@@ -636,9 +638,22 @@ def main():
 
             df = pd.DataFrame(gameteams)
             df.style.set_properties(**{'text-align': 'left'})
-            df = df.to_string(index=False,header = False)
+            df1 = df.to_string(index=False,header = False)
 
-            print(df)
+            print(df1)
+
+            if today == day+1:
+                if model_type == 'nbawalkod':
+                    df.to_excel('predictions/DCNN_predictions_' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+
+                if model_type == 'nba_gat':
+                    df.to_excel('predictions/GAT_predictions_' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+
+                if model_type == 'nba_ARMA':
+                    df.to_excel('predictions/ARMA_predictions_' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+
+                if model_type == 'nba_gin':
+                    df.to_excel('predictions/GIN_predictions._' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
             
             bet_stats = utils_data.Model_Eval_ML_ATS(games,testgamecount,ats_bets,ats_wins,total_bets,total_wins,
@@ -654,7 +669,11 @@ def main():
 
     test_games_all = test_games_all[~np.all(test_games_all == 0, axis=1)]
 
-    utils_data.eval_plots(test_games_all,window)
+    if today < day + 1:
+        utils_data.eval_plots(test_games_all,window)
+
+    print(model_type)
+    print(year)
 
 
     #Evaluate model against Vegas
