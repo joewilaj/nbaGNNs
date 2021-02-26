@@ -321,6 +321,8 @@ def eval_plots(test_games_all,window):
 
                 elif test_games_all[i,4]-test_games_all[i,5] < test_games_all[i,2] and test_games_all[i,7] < test_games_all[i,2]:
 
+                    pos = -1*pos
+
                     if pos >= 15:
                         freq_count_wins[29] = freq_count_wins[29] + 1
 
@@ -335,7 +337,20 @@ def eval_plots(test_games_all,window):
                     pass
 
 
-                else:
+                elif test_games_all[i,4]-test_games_all[i,5] < test_games_all[i,2] and test_games_all[i,7] > test_games_all[i,2]:
+
+                    if pos >= 15:
+                        freq_count_losses[29] = freq_count_losses[29] + 1
+
+                    elif pos <= -15:
+                        freq_count_losses[0] = freq_count_losses[0] + 1
+
+                    elif abs(pos) <= 14:
+                        freq_count_losses[pos+14] = freq_count_losses[pos+14] + 1
+
+                elif test_games_all[i,4]-test_games_all[i,5] > test_games_all[i,2] and test_games_all[i,7] < test_games_all[i,2]:
+
+                    pos = -1*pos
 
                     if pos >= 15:
                         freq_count_losses[29] = freq_count_losses[29] + 1
