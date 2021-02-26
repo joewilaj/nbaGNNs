@@ -13,3 +13,8 @@ After the new node representations are computed, the representation of both offe
 
 conda env create -f deepnba.yml
 
+
+Predictions for the current day for each model can be found in the predictions folder
+
+
+
