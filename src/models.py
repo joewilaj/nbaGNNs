@@ -62,17 +62,17 @@ def DCNN_nbawalkod(height,node2vec_dim):
     game_in = Concatenate()([inputs,last_5_input])
 
     dense1 = Dense(int(np.floor(6*node2vec_dim*height)),activation = 'tanh')(game_in)
-    drop1 = Dropout(.4)(dense1)
+    drop1 = Dropout(.6)(dense1)
 
     dense2 = Dense(int(np.floor(height*node2vec_dim)))(drop1)
-    drop2 = Dropout(.2)(dense2)
+    drop2 = Dropout(.3)(dense2)
 
-    dense3 = Dense(int(np.floor(height*node2vec_dim/8)),activation = 'tanh')(drop2)
-    drop3 = Dropout(.05)(dense3)
+    dense3 = Dense(int(np.floor(height*node2vec_dim/4)),activation = 'tanh')(drop2)
+    drop3 = Dropout(.2)(dense3)
 
 
-    add_line_totals_DVOA = Concatenate()([drop3,line_input,last_5_input])
-    prediction = Dense(1)(add_line_totals_DVOA)
+    add_line_totals = Concatenate()([drop3,line_input,last_5_input])
+    prediction = Dense(1)(add_line_totals)
 
     #pdb.set_trace()
 
@@ -97,9 +97,9 @@ def DCNN_nbawalkod(height,node2vec_dim):
 
 def nba_gat(node2vec_dim):
 
-    channels = 40                       
+    channels = 20                       
     n_attn_heads = 3              
-    dropout_rate = 0.3            
+    dropout_rate = 0.1            
     l2_reg = 5e-4/2               
 
 
@@ -137,16 +137,16 @@ def nba_gat(node2vec_dim):
 
 
     dense1 = Dense(int(np.floor(6*channels*n_attn_heads)),activation = 'tanh')(game_vec)
-    drop1 = Dropout(.2)(dense1)
+    drop1 = Dropout(.05)(dense1)
 
     dense2 = Dense(int(np.floor(channels*n_attn_heads/6)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.1)(dense2)
+    drop2 = Dropout(.05)(dense2)
 
     drop2 = Reshape((int(np.floor(channels*n_attn_heads)),))(drop2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels*n_attn_heads/2)))(drop2)
+    dense3 = Dense(int(np.floor(channels*n_attn_heads/6)))(drop2)
     drop3 = Dropout(.05)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
@@ -172,9 +172,7 @@ def nba_gat(node2vec_dim):
 
 def nba_ARMA(node2vec_dim):
 
-    channels = 30                                   
-    dropout_rate = 0.1            
-    l2_reg = 5e-3/2               
+    channels = 30                                                         
 
 
     node2vec_input = Input(shape=(62,node2vec_dim))  
@@ -190,14 +188,14 @@ def nba_ARMA(node2vec_dim):
 
 
     ARMA = spektral.layers.ARMAConv(channels, order=4, iterations=1, share_weights=False, gcn_activation='relu', 
-                            dropout_rate=0.3, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
+                            dropout_rate=0.2, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
                             kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, 
                             kernel_constraint=None, bias_constraint=None)([node2vec_input,A_input])
 
 
 
     ARMA_Veg = spektral.layers.ARMAConv(channels, order=4, iterations=1, share_weights=False, gcn_activation='relu', 
-                            dropout_rate=0.3, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
+                            dropout_rate=0.2, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
                             kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, 
                             kernel_constraint=None, bias_constraint=None)([node2vec_Veg_input,A_Veg_input])
 
@@ -210,17 +208,17 @@ def nba_ARMA(node2vec_dim):
 
 
     dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
-    drop1 = Dropout(.2)(dense1)
+    drop1 = Dropout(.05)(dense1)
 
     dense2 = Dense(int(np.floor(channels/6)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.1)(dense2)
+    drop2 = Dropout(.03)(dense2)
 
     drop2 = Reshape((int(np.floor(channels)),))(drop2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels)))(drop2)
-    drop3 = Dropout(.05)(dense3)
+    dense3 = Dense(int(np.floor(channels/3)))(drop2)
+    drop3 = Dropout(.01)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
 
@@ -233,9 +231,7 @@ def nba_ARMA(node2vec_dim):
 
 def nba_gin(node2vec_dim):
 
-    channels = 40                                    
-    dropout_rate = 0.1            
-    l2_reg = 5e-3/2               
+    channels = 40                                                    
 
 
     node2vec_input = Input(shape=(62,node2vec_dim))  
@@ -276,18 +272,17 @@ def nba_gin(node2vec_dim):
 
 
     dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
-    drop1 = Dropout(.2)(dense1)
+    drop1 = Dropout(.01)(dense1)
 
     dense2 = Dense(int(np.floor(channels/4)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.1)(dense2)
+    drop2 = Dropout(.01)(dense2)
 
     drop2 = Reshape((int(np.floor(1.5*channels)),))(drop2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels)))(drop2)
-    drop3 = Dropout(.05)(dense3)
-
+    dense3 = Dense(int(np.floor(channels/3)))(drop2)
+    drop3 = Dropout(.01)(dense3)
     add_line = Concatenate()([drop3,line_input])
 
     prediction = Dense(1)(add_line)
@@ -319,8 +314,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,2,25)
-    stopdate = datetime.datetime(year,2,26)
+    startdate = datetime.datetime(year,2,26)
+    stopdate = datetime.datetime(year,2,27)
 
     start_day = (startdate-datetime.datetime(year-1,10,12)).days
     stop_day = (stopdate-datetime.datetime(year-1,10,12)).days
@@ -440,14 +435,14 @@ def main():
             #hyperparameters for node2vec
             #Grover, Leskovec, node2vec: Scalable Feature Learning for Networks, July 3, 2016 #arXiv:1607.00653v1 [cs.SI]
 
-            node2vec_dim = 50
+            node2vec_dim = 30
             node2vec_p = 1
             node2vec_q = 1
 
-            height = 6
-            n2v_walklen = 15
+            height = 4
+            n2v_walklen = 6
             n2v_numwalks = 20
-            n2v_wsize = 10
+            n2v_wsize = 8
             n2v_iter = 1
             n2v_workers = 8
 
@@ -540,7 +535,7 @@ def main():
                 model = DCNN_nbawalkod(height,node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,last_5_train],y_train, 
-                            epochs = 8, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
+                            epochs = 20, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
             
                 model.summary()
 
@@ -548,21 +543,21 @@ def main():
                 model = nba_gat(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_ARMA':
                 model = nba_ARMA(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_gin':
                 model = nba_gin(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
 
@@ -644,16 +639,16 @@ def main():
 
             if today == day+1:
                 if model_type == 'nbawalkod':
-                    df.to_excel('predictions/DCNN_predictions_' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+                    df.to_excel('predictions/'+datestring+'_DCNN_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_gat':
-                    df.to_excel('predictions/GAT_predictions_' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+                    df.to_excel('predictions/'+datestring+'_GAT_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_ARMA':
-                    df.to_excel('predictions/ARMA_predictions_' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+                    df.to_excel('predictions/'+datestring+'_ARMA_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_gin':
-                    df.to_excel('predictions/GIN_predictions._' +datestring+ '.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+                    df.to_excel('predictions/'+datestring+'_GIN_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
             
             bet_stats = utils_data.Model_Eval_ML_ATS(games,testgamecount,ats_bets,ats_wins,total_bets,total_wins,
@@ -689,6 +684,7 @@ def main():
         
         if year < 2021:
             print('MSE: '  + str(round((loss/runs),1)))
+
 
 
 
