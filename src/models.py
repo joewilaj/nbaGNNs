@@ -305,20 +305,25 @@ def main():
     #model_type = 'nba_ARMA'
     model_type = 'nba_gin'
 
-
     year = 2021
-
-
-
-
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,2,26)
-    stopdate = datetime.datetime(year,2,27)
+    startdate = datetime.datetime(year,2,27)
+    stopdate = datetime.datetime(year,2,28)
+
+
+
+
+
+
+
 
     start_day = (startdate-datetime.datetime(year-1,10,12)).days
     stop_day = (stopdate-datetime.datetime(year-1,10,12)).days
+
+    startstring = startdate.strftime("%m_%d_%Y")
+    stopstring = stopdate.strftime("%m_%d_%Y")
 
     now = datetime.datetime.now()
     datestring = now.strftime("%m_%d_%Y")
@@ -543,21 +548,21 @@ def main():
                 model = nba_gat(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_ARMA':
                 model = nba_ARMA(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_gin':
                 model = nba_gin(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
 
@@ -664,11 +669,10 @@ def main():
 
     test_games_all = test_games_all[~np.all(test_games_all == 0, axis=1)]
 
-    if today != day + 1:
-        utils_data.eval_plots(test_games_all,window)
+
 
     print(model_type)
-    print(year)
+    print(startstring + ' to ' + stopstring)
 
 
     #Evaluate model against Vegas
@@ -686,8 +690,8 @@ def main():
             print('MSE: '  + str(round((loss/runs),1)))
 
 
-
-
+    if today != day + 1:
+        utils_data.eval_plots(test_games_all,window)
 
 
 
