@@ -31,6 +31,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from random import seed
 from random import randint
 from mpl_toolkits.mplot3d.proj3d import proj_transform
+from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.text import Annotation
 from matplotlib import colors
 from sklearn.cluster import KMeans
@@ -150,7 +151,7 @@ def Model_Eval_ML_ATS(games,testgamecount,ats_bets,ats_wins,total_bets,total_win
 
 
 
-def plot_node2vec(feature_node2vec,TeamList):
+def plot_node2vec(feature_node2vec,TeamList,PageRank_Off,PageRank_Def,Vegas_Graph):
 
     TeamList_D = np.zeros((31,),dtype = object)
 
@@ -193,6 +194,10 @@ def plot_node2vec(feature_node2vec,TeamList):
                textcoords='offset points', ha='right',va='bottom')
 
     plt.show()
+
+
+
+
 
 
 def Lines(Data_Full,schedule,HomeAway,TeamList_Lines,year):

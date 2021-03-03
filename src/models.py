@@ -300,20 +300,22 @@ def main():
 
 
     
-    #model_type = 'nbawalkod'
+    model_type = 'nbawalkod'
     #model_type = 'nba_gat'
     #model_type = 'nba_ARMA'
-    model_type = 'nba_gin'
+    #model_type = 'nba_gin'
 
     year = 2021
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,2,27)
-    stopdate = datetime.datetime(year,2,28)
+    startdate = datetime.datetime(year,3,2)
+    stopdate = datetime.datetime(year,3,3)
 
 
 
+    #plots = 'on'
+    plots = 'off'
 
 
 
@@ -383,7 +385,7 @@ def main():
     total_wins = 0
     money_line_wins = 0
     moneyline_count = 0
-    window = 2  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
+    window = 0  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
     push = 0
     ties = 0
 
@@ -481,9 +483,8 @@ def main():
                 for j in range(31):
                     feature_node2vec_Veg[j,:] = featurevecs_Veg[str(j)]
 
-
-                #if day > 200:
-                #    utils_data.plot_node2vec(feature_node2vec_Veg,TeamList_Lines)
+                if plots == 'on':
+                    utils_data.plot_node2vec(feature_node2vec_Veg,TeamList_Lines,PageRank_Off,PageRank_Def,Vegas_Graph)
                 
 
                 if model_type == 'nbawalkod':
@@ -548,21 +549,21 @@ def main():
                 model = nba_gat(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_ARMA':
                 model = nba_ARMA(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_gin':
                 model = nba_gin(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                            epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
 
