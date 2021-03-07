@@ -1,4 +1,4 @@
-#nbaGNNs
+nbaGNNs
 
 This project is an implementation of several graph neural network models for link prediction on the weighted, directed point-differential
 graph for the 2013-2019, 2021 seasons for NBA and NCAA basketball. Open src/models.py to select a year and day range for testing or to adjust hyperparameters. Run src/models.py train and test a model. Predictions for each model for the 2021 season are posted in [predictions](https://github.com/joewilaj/nbaGNNs/tree/main/predictions). The prediction printed is (Home Score - Away Score).
