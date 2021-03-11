@@ -83,24 +83,18 @@ def DCNN_nbawalkod(height,node2vec_dim):
 
 
 
-#Graph Attention Network
+#General Graph Neural Network
 
-#Velickovic, P.; Cucurull, G.; Casanova, A.; Romero, A.; Lio,
-#P.; and Bengio, Y. 2018. Graph attention networks. International
-#Conference on Learning Representations (ICLR)
-
-#arXiv:1710.10903v3 [stat.ML]
+#Leskovec, Ying, You. 2020.Design Space for Graph Neural Networks. NeurIPS 2020
+#arXiv:2011.08843v1 
 
 #implemented with spektral: https://github.com/danielegrattarola/spektral
 
 
 
-def nba_gat(node2vec_dim):
+def nba_gen(node2vec_dim):
 
-    channels = 20                       
-    n_attn_heads = 3              
-    dropout_rate = 0.1            
-    l2_reg = 5e-4/2               
+    channels = 60                                    
 
 
     node2vec_input = Input(shape=(62,node2vec_dim))  
@@ -108,45 +102,45 @@ def nba_gat(node2vec_dim):
     A_input = Input(shape=(62,62))
     A_Veg_input = Input(shape=(31,31))
 
+    A_input_sp = extract_team_GAT.To_Sparse()(A_input)
+    A_Veg_input_sp = extract_team_GAT.To_Sparse()(A_Veg_input)
+
     team_inputs = Input(shape=(2,),dtype = tf.int64)
     line_input = Input(shape=(1,))
     last_5_input = Input(shape = (10,))
 
 
 
-
-    graph_attention = spektral.layers.GATConv(channels, attn_heads=n_attn_heads, concat_heads=True, dropout_rate=dropout_rate, 
-                            return_attn_coef=False, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', 
-                            attn_kernel_initializer='glorot_uniform', kernel_regularizer=l2(l2_reg), bias_regularizer=None, 
-                            attn_kernel_regularizer=l2(l2_reg), activity_regularizer=None, kernel_constraint=None, bias_constraint=None,
-                            attn_kernel_constraint=None)([node2vec_input,A_input])
+    conv = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='mean', activation='elu', use_bias=True,
+                                kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                bias_regularizer=None, activity_regularizer=None, 
+                                kernel_constraint=None, bias_constraint=None)([node2vec_input,A_input_sp])
 
 
 
-
-    graph_attention_Veg = spektral.layers.GATConv(channels, attn_heads=n_attn_heads, concat_heads=True, dropout_rate=dropout_rate, 
-                            return_attn_coef=False, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', 
-                            attn_kernel_initializer='glorot_uniform', kernel_regularizer=l2(l2_reg), bias_regularizer=None, 
-                            attn_kernel_regularizer=l2(l2_reg), activity_regularizer=None, kernel_constraint=None, bias_constraint=None,
-                            attn_kernel_constraint=None)([node2vec_Veg_input,A_Veg_input])
+    conv_veg = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='mean', activation='elu', use_bias=True,
+                                kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                bias_regularizer=None, activity_regularizer=None, 
+                                kernel_constraint=None, bias_constraint=None)([node2vec_Veg_input,A_Veg_input_sp])
 
 
     #extracts nodes for link prediction
 
-    game_vec = extract_team_GAT.Game_Vec(channels*n_attn_heads)([team_inputs,graph_attention,graph_attention_Veg])
+    game_vec = extract_team_GAT.Game_Vec(channels)([team_inputs,conv,conv_veg])
 
 
-    dense1 = Dense(int(np.floor(6*channels*n_attn_heads)),activation = 'tanh')(game_vec)
+
+    dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
     drop1 = Dropout(.05)(dense1)
 
-    dense2 = Dense(int(np.floor(channels*n_attn_heads/6)),activation = 'tanh')(drop1)
+    dense2 = Dense(int(np.floor(channels/6)),activation = 'tanh')(drop1)
     drop2 = Dropout(.05)(dense2)
 
-    drop2 = Reshape((int(np.floor(channels*n_attn_heads)),))(drop2)
+    drop2 = Reshape((int(np.floor(channels)),))(drop2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels*n_attn_heads/6)))(drop2)
+    dense3 = Dense(int(np.floor(channels/8)))(drop2)
     drop3 = Dropout(.05)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
@@ -300,17 +294,17 @@ def main():
 
 
     
-    model_type = 'nbawalkod'
-    #model_type = 'nba_gat'
+    #model_type = 'nbawalkod'
+    #model_type = 'nba_gen'
     #model_type = 'nba_ARMA'
-    #model_type = 'nba_gin'
+    model_type = 'nba_gin'
 
     year = 2021
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,3,3)
-    stopdate = datetime.datetime(year,3,4)
+    startdate = datetime.datetime(year,3,9)
+    stopdate = datetime.datetime(year,3,10)
 
 
 
@@ -455,7 +449,7 @@ def main():
 
 
 
-            if model_type == 'nbawalkod' or model_type == 'nba_gat' or model_type == 'nba_ARMA' or model_type == 'nba_gin':
+            if model_type == 'nbawalkod' or model_type == 'nba_gen' or model_type == 'nba_ARMA' or model_type == 'nba_gin':
 
                 G_orc = (1-epsilon)*(S_OffDef) + epsilon*(1/62)*np.ones((62,62),dtype = float)
                 G_orc = utils_data.sto_mat(G_orc)
@@ -503,7 +497,7 @@ def main():
                                                                                                 S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim)
 
 
-                elif model_type == 'nba_gat':
+                elif model_type == 'nba_gen':
 
 
 
@@ -545,8 +539,8 @@ def main():
             
                 model.summary()
 
-            elif model_type == 'nba_gat':
-                model = nba_gat(node2vec_dim)
+            elif model_type == 'nba_gen':
+                model = nba_gen(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
                             epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
@@ -586,7 +580,7 @@ def main():
 
             #test the model, print predictions, the ATS Win %, ML Win % and the MSE for the test set
 
-            elif model_type == 'nba_gat':
+            elif model_type == 'nba_gen':
 
                 
 
@@ -647,7 +641,7 @@ def main():
                 if model_type == 'nbawalkod':
                     df.to_excel('predictions/'+datestring+'_DCNN_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
-                if model_type == 'nba_gat':
+                if model_type == 'nba_gen':
                     df.to_excel('predictions/'+datestring+'_GAT_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_ARMA':
