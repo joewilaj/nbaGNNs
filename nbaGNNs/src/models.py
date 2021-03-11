@@ -351,7 +351,7 @@ def main():
 
 
 
-
+    #To pull data for current day, run src/nbadata.py and update data/2021Lines.xls
 
     with open('pickles/NBA_Data_pickled/'+str(year)+'NBAData.pkl', 'rb') as Data: 
         Data_Full = pickle.load(Data)
