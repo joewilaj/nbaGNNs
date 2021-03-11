@@ -351,7 +351,7 @@ def main():
 
 
 
-
+    #To pull current data and write to 2021NBAData.pkl, run src/ncaabdata.py
 
     with open('pickles/NBA_Data_pickled/'+str(year)+'NBAData.pkl', 'rb') as Data: 
         Data_Full = pickle.load(Data)
