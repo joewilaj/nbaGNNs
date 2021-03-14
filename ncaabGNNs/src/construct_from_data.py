@@ -1377,6 +1377,8 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
     x_train_home = np.zeros((6500,2*height*node2vec_dim),dtype = float)
     x_train_away = np.zeros((6500,2*height*node2vec_dim),dtype = float)
 
+    one_hot = np.zeros((6500,2*N),dtype = float)
+
 
     for k in range(N):
         for j in range(day):
@@ -1431,6 +1433,9 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
 
                 y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
 
+                one_hot[gamecount_train-1,k] = 1
+                one_hot[gamecount_train-1,opponent+N]
+
 
                 if game > 5:
                     last_5 = Data_Full[(j-6):(j-1),0,k]
@@ -1455,6 +1460,7 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
 
     y_train = y_train[0:gamecount_train]
     last_5_train = last_5_train[0:gamecount_train,:]
+    one_hot = one_hot[0:gamecount_train]
 
 
 
@@ -1465,7 +1471,7 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
     for c in range(gamecount_train):
         x_train[c] = np.concatenate((x_train_home[c,:],x_train_away[c,:]),axis = -1)
 
-    return x_train, y_train,last_5_train
+    return x_train, y_train,last_5_train,one_hot
 
 
 
@@ -1483,6 +1489,7 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
 
     test_y = np.zeros((testgamecount,),dtype = float)
 
+    one_hot = np.zeros((testgamecount,2*N),dtype = float)
 
 
     for i in range(testgamecount):
@@ -1528,6 +1535,9 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
         x_test_home[i,:] = h_vec_t
         x_test_away[i,:] = a_vec_t
 
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
+
 
         if year < 2021:
             test_y[i] = games[i,4] - games[i,5]
@@ -1553,7 +1563,7 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
     for c in range(testgamecount):
         x_test[c] = np.concatenate((x_test_home[c,:],x_test_away[c,:]),axis = -1)
 
-    return x_test, last_5_test, test_y
+    return x_test, last_5_test, test_y,one_hot
 
 
 
@@ -1606,6 +1616,7 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     feature_train = np.zeros((6500,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     A_Train = np.zeros((6500,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
     last_5_train = np.zeros((6500,10),dtype = float)
+    one_hot = np.zeros((6500,2*N),dtype = float)
 
     #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
 
@@ -1622,7 +1633,8 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
 
                 y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
 
-
+                one_hot[gamecount_train-1,k] = 1
+                one_hot[gamecount_train-1,opponent+N]
 
 
                 A_Train[gamecount_train-1,:,:] = A_OffDef
@@ -1655,9 +1667,10 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     A_Train = A_Train[0:gamecount_train,:,:]
     feature_train = feature_train[0:gamecount_train,:,:]
     last_5_train = last_5_train[0:gamecount_train,:]
+    one_hot = one_hot[0:gamecount_train]
 
 
-    return x_train,y_train,feature_train,A_Train,last_5_train
+    return x_train,y_train,feature_train,A_Train,last_5_train,one_hot
 
 def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_OffDef):
 
@@ -1670,6 +1683,8 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     feature_train = np.zeros((6500,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     A_Train = np.zeros((6500,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
     last_5_train = np.zeros((6500,10),dtype = float)
+    one_hot = np.zeros((6500,2*N),dtype = float)
+
 
     #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
 
@@ -1686,7 +1701,8 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
 
                 y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
 
-
+                one_hot[gamecount_train-1,k] = 1
+                one_hot[gamecount_train-1,opponent+N]
 
 
                 A_Train[gamecount_train-1,:,:] = A_OffDef
@@ -1719,9 +1735,10 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     A_Train = A_Train[0:gamecount_train,:,:]
     feature_train = feature_train[0:gamecount_train,:,:]
     last_5_train = last_5_train[0:gamecount_train,:]
+    one_hot = one_hot[0:gamecount_train]
 
 
-    return x_train,y_train,feature_train,A_Train,last_5_train
+    return x_train,y_train,feature_train,A_Train,last_5_train,one_hot
 
 def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,year):
 
@@ -1734,10 +1751,14 @@ def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
     x_test = np.zeros((testgamecount,2),dtype = float)
     last_5_test = np.zeros((testgamecount,10),dtype = float)
     test_y = np.zeros((testgamecount,),dtype = float)
+    one_hot = np.zeros((testgamecount,2*N),dtype = float)
 
     for i in range(testgamecount):
         x_test[i,0] = games[i,0]
         x_test[i,1] = games[i,1]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
 
         if year < 2021:
             test_y[i] = games[i,4] - games[i,5]
@@ -1758,7 +1779,7 @@ def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
 
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
-    return x_test,feature_test,A_Test,last_5_test, test_y
+    return x_test,feature_test,A_Test,last_5_test, test_y,one_hot
 
 def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,year):
 
@@ -1771,10 +1792,15 @@ def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
     x_test = np.zeros((testgamecount,2),dtype = float)
     last_5_test = np.zeros((testgamecount,10),dtype = float)
     test_y = np.zeros((testgamecount,),dtype = float)
+    one_hot = np.zeros((testgamecount,2*N),dtype = float)
+
 
     for i in range(testgamecount):
         x_test[i,0] = games[i,0]
         x_test[i,1] = games[i,1]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
 
         if year < 2021:
             test_y[i] = games[i,4] - games[i,5]
@@ -1795,7 +1821,7 @@ def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
 
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
-    return x_test,feature_test,A_Test,last_5_test, test_y
+    return x_test,feature_test,A_Test,last_5_test, test_y,one_hot
 
 
 def Vegas_Graph(schedule,Lines,day):
