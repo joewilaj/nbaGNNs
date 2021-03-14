@@ -1361,6 +1361,8 @@ def PageRank(G_orc):
 
 def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim):
 
+    N = Data_Full.shape[2]
+
     gamecount_train = 0
     
     y_train = np.zeros((3000,),dtype = float)
@@ -1374,6 +1376,8 @@ def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,
 
     x_train_home = np.zeros((3000,3*height*node2vec_dim),dtype = float)
     x_train_away = np.zeros((3000,3*height*node2vec_dim),dtype = float)
+
+    one_hot = np.zeros((3000,2*N),dtype = float)
 
 
     for k in range(30):
@@ -1439,6 +1443,10 @@ def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,
 
                 y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
 
+                one_hot[gamecount_train-1,k] = 1
+                one_hot[gamecount_train-1,opponent+N]
+
+
                 line_train[gamecount_train-1] = Lines[k,j]
 
                 if game > 5:
@@ -1466,6 +1474,7 @@ def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,
     y_train = y_train[0:gamecount_train]
 
     line_train = line_train[0:gamecount_train]
+    one_hot = one_hot[0:gamecount_train]
     last_5_train = last_5_train[0:gamecount_train,:]
 
 
@@ -1477,13 +1486,14 @@ def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,
     for c in range(gamecount_train):
         x_train[c] = np.concatenate((x_train_home[c,:],x_train_away[c,:]),axis = -1)
 
-    return x_train, y_train,line_train,last_5_train
+    return x_train, y_train,line_train,last_5_train,one_hot
 
 
 
 
 def Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim,day,year):
 
+    N = Data_Full.shape[2]
  
     x_test_home = np.zeros((testgamecount,3*height*node2vec_dim),dtype = float)
     x_test_away = np.zeros((testgamecount,3*height*node2vec_dim),dtype = float)
@@ -1494,6 +1504,8 @@ def Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_
     last_5_test = np.zeros((testgamecount,10),dtype = float)
 
     test_y = np.zeros((testgamecount,),dtype = float)
+
+    one_hot = np.zeros((testgamecount,2*N),dtype = float)
 
 
 
@@ -1552,6 +1564,11 @@ def Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_
         line_test[i] = games[i,2]
         totals_test[i] = games[i,3]
 
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
+
+
+
         if year < 2021:
             test_y[i] = games[i,4] - games[i,5]
 
@@ -1576,7 +1593,7 @@ def Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_
     for c in range(testgamecount):
         x_test[c] = np.concatenate((x_test_home[c,:],x_test_away[c,:]),axis = -1)
 
-    return x_test, line_test, last_5_test, test_y
+    return x_test, line_test, last_5_test, test_y,one_hot
 
 
 
@@ -1619,6 +1636,8 @@ def Test_Games(TeamList,Data_Full,schedule,HomeAway,Lines,day):
 
 def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg):
 
+    N = Data_Full.shape[2]
+
     gamecount_train = 0
 
     x_train = np.zeros((3000,2),dtype = int)
@@ -1629,6 +1648,7 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     A_Train = np.zeros((3000,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
     A_Veg_train = np.zeros((3000,A_Veg.shape[0],A_Veg.shape[1]),dtype = int)
     last_5_train = np.zeros((3000,10),dtype = float)
+    one_hot = np.zeros((3000,2*N),dtype = float)
 
     #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
 
@@ -1647,6 +1667,8 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
 
                 line_train[gamecount_train-1] = Lines[k,j]
 
+                one_hot[gamecount_train-1,k] = 1
+                one_hot[gamecount_train-1,opponent+N]
 
 
                 A_Train[gamecount_train-1,:,:] = A_OffDef
@@ -1684,12 +1706,15 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     feature_train = feature_train[0:gamecount_train,:,:]
     feature_Veg_train = feature_Veg_train[0:gamecount_train,:,:] 
     last_5_train = last_5_train[0:gamecount_train,:]
+    one_hot = one_hot[0:gamecount_train]
 
 
-    return x_train,y_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train
+    return x_train,y_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train,one_hot
 
 def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg):
 
+    N = Data_Full.shape[2]
+
     gamecount_train = 0
 
     x_train = np.zeros((3000,2),dtype = int)
@@ -1700,6 +1725,7 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     A_Train = np.zeros((3000,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
     A_Veg_train = np.zeros((3000,A_Veg.shape[0],A_Veg.shape[1]),dtype = int)
     last_5_train = np.zeros((3000,10),dtype = float)
+    one_hot = np.zeros((3000,2*N),dtype = float)
 
     #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
 
@@ -1717,6 +1743,9 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
                 y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
 
                 line_train[gamecount_train-1] = Lines[k,j]
+                one_hot[gamecount_train-1,k] = 1
+                one_hot[gamecount_train-1,opponent+N]
+
 
 
 
@@ -1755,12 +1784,15 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     feature_train = feature_train[0:gamecount_train,:,:]
     feature_Veg_train = feature_Veg_train[0:gamecount_train,:,:] 
     last_5_train = last_5_train[0:gamecount_train,:]
+    one_hot = one_hot[0:gamecount_train]
 
 
-    return x_train,y_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train
+    return x_train,y_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train,one_hot
 
 def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,day,year):
 
+    N = Data_Full.shape[2]
+
     feature_test = np.zeros((testgamecount,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     feature_Veg_test = np.zeros((testgamecount,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
 
@@ -1771,11 +1803,16 @@ def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature
     line_test = np.zeros((testgamecount,),dtype = float)
     last_5_test = np.zeros((testgamecount,10),dtype = float)
     test_y = np.zeros((testgamecount,),dtype = float)
+    one_hot = np.zeros((testgamecount,2*N),dtype = float)
+
 
     for i in range(testgamecount):
         x_test[i,0] = games[i,0]
         x_test[i,1] = games[i,1]
         line_test[i] = games[i,2]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
 
         if year < 2021:
             test_y[i] = games[i,4] - games[i,5]
@@ -1798,10 +1835,12 @@ def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature
 
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
-    return x_test,line_test,feature_test,A_Test,feature_Veg_test,A_Veg_Test,last_5_test, test_y
+    return x_test,line_test,feature_test,A_Test,feature_Veg_test,A_Veg_Test,last_5_test, test_y,one_hot
 
 def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,day,year):
 
+    N = Data_Full.shape[2]
+
     feature_test = np.zeros((testgamecount,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     feature_Veg_test = np.zeros((testgamecount,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
 
@@ -1812,11 +1851,15 @@ def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature
     line_test = np.zeros((testgamecount,),dtype = float)
     last_5_test = np.zeros((testgamecount,10),dtype = float)
     test_y = np.zeros((testgamecount,),dtype = float)
+    one_hot = np.zeros((testgamecount,2*N),dtype = float)
 
     for i in range(testgamecount):
         x_test[i,0] = games[i,0]
         x_test[i,1] = games[i,1]
         line_test[i] = games[i,2]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
 
         if year < 2021:
             test_y[i] = games[i,4] - games[i,5]
@@ -1839,7 +1882,7 @@ def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,feature
 
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
-    return x_test,line_test,feature_test,A_Test,feature_Veg_test,A_Veg_Test,last_5_test, test_y
+    return x_test,line_test,feature_test,A_Test,feature_Veg_test,A_Veg_Test,last_5_test, test_y,one_hot
 
 
 def Vegas_Graph(schedule,Lines,day):
