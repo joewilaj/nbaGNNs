@@ -59,7 +59,9 @@ def DCNN_nbawalkod(height,node2vec_dim):
     line_input = Input(shape = (1,))
     last_5_input = Input(shape = (10,))
 
-    game_in = Concatenate()([inputs,last_5_input])
+    one_hot_input = Input(shape=(60,))
+
+    game_in = Concatenate()([inputs,last_5_input,one_hot_input])
 
     dense1 = Dense(int(np.floor(6*node2vec_dim*height)),activation = 'tanh')(game_in)
     drop1 = Dropout(.6)(dense1)
@@ -76,7 +78,7 @@ def DCNN_nbawalkod(height,node2vec_dim):
 
     #pdb.set_trace()
 
-    model = Model(inputs = [inputs,line_input,last_5_input], outputs = prediction)
+    model = Model(inputs = [inputs,line_input,last_5_input,one_hot_input], outputs = prediction)
 
     return model
 
@@ -108,7 +110,7 @@ def nba_gen(node2vec_dim):
     team_inputs = Input(shape=(2,),dtype = tf.int64)
     line_input = Input(shape=(1,))
     last_5_input = Input(shape = (10,))
-
+    one_hot_input = Input(shape=(60,))
 
 
     conv = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='mean', activation='elu', use_bias=True,
@@ -129,18 +131,20 @@ def nba_gen(node2vec_dim):
     game_vec = extract_team_GAT.Game_Vec(channels)([team_inputs,conv,conv_veg])
 
 
+    rshp = Reshape((int(np.floor(6*channels)),))(game_vec)
+    cat = Concatenate()([rshp,one_hot_input])
 
-    dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
+
+
+    dense1 = Dense(int(np.floor(6.5*channels)),activation = 'tanh')(cat)
     drop1 = Dropout(.05)(dense1)
 
-    dense2 = Dense(int(np.floor(channels/6)),activation = 'tanh')(drop1)
+    dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
     drop2 = Dropout(.05)(dense2)
-
-    drop2 = Reshape((int(np.floor(channels)),))(drop2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels/8)))(drop2)
+    dense3 = Dense(int(np.floor(channels/2)))(drop2)
     drop3 = Dropout(.05)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
@@ -148,7 +152,7 @@ def nba_gen(node2vec_dim):
     prediction = Dense(1)(add_line)
 
 
-    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input], outputs = prediction)
+    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input,one_hot_input], outputs = prediction)
 
     return model
 
@@ -177,6 +181,7 @@ def nba_ARMA(node2vec_dim):
     team_inputs = Input(shape=(2,),dtype = tf.int64)
     line_input = Input(shape=(1,))
     last_5_input = Input(shape = (10,))
+    one_hot_input = Input(shape=(60,))
 
 
 
@@ -199,26 +204,27 @@ def nba_ARMA(node2vec_dim):
 
     game_vec = extract_team_GAT.Game_Vec(channels)([team_inputs,ARMA,ARMA_Veg])
 
+    rshp = Reshape((int(np.floor(6*channels)),))(game_vec)
+    cat = Concatenate()([rshp,one_hot_input])
 
 
-    dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
+
+    dense1 = Dense(int(np.floor(6.5*channels)),activation = 'tanh')(cat)
     drop1 = Dropout(.05)(dense1)
 
-    dense2 = Dense(int(np.floor(channels/6)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.03)(dense2)
-
-    drop2 = Reshape((int(np.floor(channels)),))(drop2)
+    dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
+    drop2 = Dropout(.05)(dense2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels/3)))(drop2)
-    drop3 = Dropout(.01)(dense3)
+    dense3 = Dense(int(np.floor(channels/2)))(drop2)
+    drop3 = Dropout(.05)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
 
     prediction = Dense(1)(add_line)
 
-    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input], outputs = prediction)
+    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input,one_hot_input], outputs = prediction)
 
     return model
 
@@ -236,7 +242,7 @@ def nba_gin(node2vec_dim):
     team_inputs = Input(shape=(2,),dtype = tf.int64)
     line_input = Input(shape=(1,))
     last_5_input = Input(shape = (10,))
-
+    one_hot_input = Input(shape=(60,))
 
     A_input_sp = extract_team_GAT.To_Sparse()(A_input)
     A_Veg_input_sp = extract_team_GAT.To_Sparse()(A_Veg_input)
@@ -257,31 +263,34 @@ def nba_gin(node2vec_dim):
                                   bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
                                   bias_constraint=None)([node2vec_Veg_input,A_Veg_input_sp])
 
-
-    #extracts nodes for link prediction
-
-
     game_vec = extract_team_GAT.Game_Vec(channels)([team_inputs,GIN,GIN_Veg])
 
 
 
-    dense1 = Dense(int(np.floor(6*channels)),activation = 'tanh')(game_vec)
-    drop1 = Dropout(.01)(dense1)
+    rshp = Reshape((int(np.floor(6*channels)),))(game_vec)
+    cat = Concatenate()([rshp,one_hot_input])
 
-    dense2 = Dense(int(np.floor(channels/4)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.01)(dense2)
 
-    drop2 = Reshape((int(np.floor(1.5*channels)),))(drop2)
+
+    dense1 = Dense(int(np.floor(6.5*channels)),activation = 'tanh')(cat)
+    drop1 = Dropout(.05)(dense1)
+
+    dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
+    drop2 = Dropout(.05)(dense2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
-    dense3 = Dense(int(np.floor(channels/3)))(drop2)
-    drop3 = Dropout(.01)(dense3)
+    dense3 = Dense(int(np.floor(channels/2)))(drop2)
+    drop3 = Dropout(.05)(dense3)
+
     add_line = Concatenate()([drop3,line_input])
 
     prediction = Dense(1)(add_line)
 
-    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input], outputs = prediction)
+    #extracts nodes for link prediction
+
+
+    model = Model(inputs = [team_inputs,line_input,node2vec_input,A_input,node2vec_Veg_input,A_Veg_input,last_5_input,one_hot_input], outputs = prediction)
 
     return model
 
@@ -294,17 +303,17 @@ def main():
 
 
     
-    #model_type = 'nbawalkod'
+    model_type = 'nbawalkod'
     #model_type = 'nba_gen'
     #model_type = 'nba_ARMA'
-    model_type = 'nba_gin'
+    #model_type = 'nba_gin'
 
     year = 2021
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,3,9)
-    stopdate = datetime.datetime(year,3,10)
+    startdate = datetime.datetime(year,3,13)
+    stopdate = datetime.datetime(year,3,14)
 
 
 
@@ -351,7 +360,7 @@ def main():
 
 
 
-    #To pull data for current day, run src/nbadata.py and update data/2021Lines.xls
+
 
     with open('pickles/NBA_Data_pickled/'+str(year)+'NBAData.pkl', 'rb') as Data: 
         Data_Full = pickle.load(Data)
@@ -379,7 +388,7 @@ def main():
     total_wins = 0
     money_line_wins = 0
     moneyline_count = 0
-    window = 0  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
+    window = 3  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
     push = 0
     ties = 0
 
@@ -493,7 +502,7 @@ def main():
 
 
 
-                    x_train, y_train, line_train,last_5_train = construct_from_data.Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,
+                    x_train, y_train, line_train,last_5_train, one_hot_train = construct_from_data.Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,
                                                                                                 S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim)
 
 
@@ -501,7 +510,7 @@ def main():
 
 
 
-                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train = construct_from_data.GAT_training_set(Data_Full,
+                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train,one_hot_train = construct_from_data.GAT_training_set(Data_Full,
                                                                                                                     Lines,schedule,HomeAway,
                                                                                                                     day,feature_node2vec,
                                                                                                                     A_OffDef,feature_node2vec_Veg,A_Veg)
@@ -510,14 +519,14 @@ def main():
 
                 elif model_type == 'nba_ARMA':
 
-                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train, last_5_train = construct_from_data.GAT_training_set(Data_Full,
+                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train, last_5_train,one_hot_train = construct_from_data.GAT_training_set(Data_Full,
                                                                                                                     Lines,schedule,HomeAway,
                                                                                                                     day,feature_node2vec,
                                                                                                                     ARMA,feature_node2vec_Veg,ARMA_Veg)
 
                 elif model_type == 'nba_gin':
 
-                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train, last_5_train = construct_from_data.gin_training_set(Data_Full,
+                    x_train, y_train, line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train, last_5_train,one_hot_train = construct_from_data.gin_training_set(Data_Full,
                                                                                                                     Lines,schedule,HomeAway,
                                                                                                                     day,feature_node2vec,
                                                                                                                     ARMA,feature_node2vec_Veg,ARMA_Veg)
@@ -534,7 +543,7 @@ def main():
             if model_type == 'nbawalkod':
                 model = DCNN_nbawalkod(height,node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,line_train,last_5_train],y_train, 
+                model.fit([x_train,line_train,last_5_train,one_hot_train],y_train, 
                             epochs = 20, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
             
                 model.summary()
@@ -542,21 +551,21 @@ def main():
             elif model_type == 'nba_gen':
                 model = nba_gen(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
+                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train,one_hot_train],y_train, 
                             epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_ARMA':
                 model = nba_ARMA(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
+                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train,one_hot_train],y_train, 
                             epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'nba_gin':
                 model = nba_gin(node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train],y_train, 
+                model.fit([x_train,line_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,last_5_train,one_hot_train],y_train, 
                             epochs = 10,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
@@ -569,13 +578,13 @@ def main():
 
             
             if model_type == 'nbawalkod':
-                x_test, line_test, last_5_test, test_y = construct_from_data.Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,
+                x_test, line_test, last_5_test, test_y,one_hot_test = construct_from_data.Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,
                                                                             feature_node2vec,feature_node2vec_Veg,height,node2vec_dim,day,year)
 
-                Pred = model.predict([x_test,line_test,last_5_test])
+                Pred = model.predict([x_test,line_test,last_5_test,one_hot_test])
 
                 if year < 2021:
-                    Eval = model.evaluate([x_test,line_test,last_5_test],test_y,verbose=0)
+                    Eval = model.evaluate([x_test,line_test,last_5_test,one_hot_test],test_y,verbose=0)
                     loss = loss + Eval[0]
 
             #test the model, print predictions, the ATS Win %, ML Win % and the MSE for the test set
@@ -584,24 +593,24 @@ def main():
 
                 
 
-                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y = construct_from_data.GAT_test_set(Data_Full,games,
+                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y,one_hot_test = construct_from_data.GAT_test_set(Data_Full,games,
                                                                                                                 testgamecount,feature_node2vec,
                                                                                                                 A_OffDef,feature_node2vec_Veg,A_Veg,day,year)
 
-                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],batch_size=1)
+                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test,one_hot_test],batch_size=1)
                 if year < 2021:
-                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],test_y,verbose=0,batch_size=1)
+                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test,one_hot_test],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
 
             elif model_type == 'nba_ARMA':
-                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y = construct_from_data.GAT_test_set(Data_Full,games,
+                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y,one_hot_test = construct_from_data.GAT_test_set(Data_Full,games,
                                                                                                                 testgamecount,feature_node2vec,
                                                                                                                 ARMA,feature_node2vec_Veg,ARMA_Veg,day,year)
 
-                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],batch_size=1)
+                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test,one_hot_test],batch_size=1)
                 if year < 2021:
-                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],test_y,verbose=0,batch_size=1)
+                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test,one_hot_test],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
 
@@ -609,13 +618,13 @@ def main():
 
                 
 
-                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y = construct_from_data.gin_test_set(Data_Full,games,
+                x_test, line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test, test_y,one_hot_test = construct_from_data.gin_test_set(Data_Full,games,
                                                                                                                 testgamecount,feature_node2vec,
                                                                                                                 A_OffDef,feature_node2vec_Veg,A_Veg,day,year)
 
-                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],batch_size=1)
+                Pred = model.predict([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test,one_hot_test],batch_size=1)
                 if year < 2021:
-                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test],test_y,verbose=0,batch_size=1)
+                    Eval = model.evaluate([x_test,line_test,feature_test,A_test,feature_Veg_test,A_Veg_test,last_5_test,one_hot_test],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
 
@@ -642,7 +651,7 @@ def main():
                     df.to_excel('predictions/'+datestring+'_DCNN_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_gen':
-                    df.to_excel('predictions/'+datestring+'_GAT_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
+                    df.to_excel('predictions/'+datestring+'_GEN_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_ARMA':
                     df.to_excel('predictions/'+datestring+'_ARMA_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
