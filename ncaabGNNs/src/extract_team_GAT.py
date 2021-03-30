@@ -18,16 +18,11 @@ class Game_Vec(Layer):
 
     def call(self,inputs):
 
-
-        defense_index = tf.math.add(inputs[0],tf.constant([self.N + 1,self.N + 1],dtype = tf.int64))
-
-        off = tf.gather(inputs[1],inputs[0], axis=1)
-        defense = tf.gather(inputs[1],defense_index, axis=1)
-
-        game_vec = tf.concat([off,defense],axis = 2)
+        index = tf.math.add(inputs[0],tf.constant([0,self.N + 1],dtype = tf.int64))
+        stack = tf.gather(inputs[1],index, axis=1)
 
 
-        return game_vec
+        return stack
 
 
 class To_Sparse(Layer):

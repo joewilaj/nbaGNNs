@@ -33,6 +33,7 @@ def main():
     TeamList = pd.read_excel('data/TeamLists.xls',sheet_name = year-2015,header = None)
     TeamList = TeamList.to_numpy(dtype = object,copy = True)
 
+
     now = datetime.datetime.now()
     datestring = now.strftime("%m_%d_%Y")
 
@@ -61,7 +62,7 @@ def main():
             game_date = game.datetime
             daynum = (game_date - datetime.datetime(year-1,10,12)).days
 
-            if daynum >= today - 2:
+            if daynum >= today - 5:
 
                 box = game.boxscore
 

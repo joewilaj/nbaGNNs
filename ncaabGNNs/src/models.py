@@ -55,32 +55,41 @@ np.set_printoptions(threshold=sys.maxsize)
 def DCNN_ncaabwalkod(height,node2vec_dim,N): 
 
 
-    inputs = Input(shape=(4*height*node2vec_dim,))
+    inputs = Input(shape=(2,2*height*node2vec_dim,))
     last_5_input = Input(shape = (10,))
     one_hot_input = Input(shape=(2*N,))
 
-    game_in = Concatenate()([inputs,last_5_input,one_hot_input])
+    branch_outputs = []
 
-    dense1 = Dense(int(np.floor(5*node2vec_dim*height)),activation = 'tanh')(game_in)
-    drop1 = Dropout(.6)(dense1)
+    dense1 = Dense(int(np.floor(2*node2vec_dim*height)),activation = 'tanh')
+    drop1 = Dropout(.2)
 
-    dense2 = Dense(int(np.floor(height*node2vec_dim)))(drop1)
-    drop2 = Dropout(.3)(dense2)
+    dense2 = Dense(int(np.floor(height*node2vec_dim)))
+    drop2 = Dropout(.1)
 
-    dense3 = Dense(int(np.floor(height*node2vec_dim/4)),activation = 'tanh')(drop2)
-    drop3 = Dropout(.2)(dense3)
+    dense3 = Dense(int(np.floor(height*node2vec_dim/5)))
 
 
-    prediction = Dense(1)(drop3)
+    for i in range(2):
+        ha = Lambda(lambda x: x[:, i, :], name = "Lambda_" + str(i))(inputs)
 
-    #pdb.set_trace()
+        offdef = dense1(ha)
+        offdef = drop1(offdef)
+
+        offdef = dense2(offdef)
+        offdef = drop2(offdef)
+
+        fin = dense3(offdef)
+
+        pts = Dense(1)(fin)
+
+        branch_outputs.append(pts)
+
+    prediction = Concatenate()(branch_outputs)
 
     model = Model(inputs = [inputs,last_5_input,one_hot_input], outputs = prediction)
 
     return model
-
-
-
 
 
 #General Graph Neural Network
@@ -95,10 +104,7 @@ def DCNN_ncaabwalkod(height,node2vec_dim,N):
 
 def ncaab_gen(node2vec_dim,N):
 
-    channels = 60                      
-    #n_attn_heads = 3              
-    #dropout_rate = 0.1            
-    #l2_reg = 5e-4/2               
+    channels = 50                    
 
 
     node2vec_input = Input(shape=(2*(N+1),node2vec_dim))  
@@ -106,41 +112,58 @@ def ncaab_gen(node2vec_dim,N):
     A_input_sp = extract_team_GAT.To_Sparse()(A_input)
 
     team_inputs = Input(shape=(2,),dtype = tf.int64)
-    line_input = Input(shape=(1,))
+    team_inputs_AH = Input(shape=(2,),dtype = tf.int64) 
     last_5_input = Input(shape = (10,))
     one_hot_input = Input(shape=(2*N,))
+    one_hot_input_AH = Input(shape=(2*N,))
 
 
-    conv = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='mean', activation='elu', use_bias=True,
+    conv = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='sum', activation='relu', use_bias=True,
                                 kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
                                 bias_regularizer=None, activity_regularizer=None, 
                                 kernel_constraint=None, bias_constraint=None)([node2vec_input,A_input_sp])
 
 
+
     #extracts nodes for link prediction
 
-    game_vec = extract_team_GAT.Game_Vec(channels,N)([team_inputs,conv])
-
-    rshp = Reshape((int(np.floor(4*channels)),))(game_vec)
-    cat = Concatenate()([rshp,one_hot_input])
+    game_vec_HA = extract_team_GAT.Game_Vec(channels,N)([team_inputs,conv])
+    game_vec_AH = extract_team_GAT.Game_Vec(channels,N)([team_inputs_AH,conv])
 
 
-    dense1 = Dense(int(np.floor(5*channels)),activation = 'tanh')(cat)
-    drop1 = Dropout(.05)(dense1)
+    HA = Reshape((int(np.floor(2*channels)),))(game_vec_HA)
+    AH = Reshape((int(np.floor(2*channels)),))(game_vec_AH)
 
-    dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.05)(dense2)
-
-    drop2 = Concatenate()([drop2,last_5_input])
-
-    dense3 = Dense(int(np.floor(channels/2)))(drop2)
-    drop3 = Dropout(.05)(dense3)
+    HA = Concatenate()([HA,one_hot_input])
+    AH = Concatenate()([AH,one_hot_input_AH])
 
 
-    prediction = Dense(1)(drop3)
+    dense1 = Dense(int(np.floor(2.5*channels)),activation = 'tanh')
+    drop1 = Dropout(.01)
+
+    dense2 = Dense(int(np.floor(channels)),activation = 'tanh')
+    drop2 = Dropout(.01)
+
+    pred = Dense(1)
 
 
-    model = Model(inputs = [team_inputs,node2vec_input,A_input,last_5_input,one_hot_input], outputs = prediction)
+    HA = dense1(HA)
+    HA = drop1(HA)
+    HA = dense2(HA)
+    HA = drop2(HA)
+
+    AH = dense1(AH)
+    AH = drop1(AH)
+    AH = dense2(AH)
+    AH = drop2(AH)
+
+    pts_home = pred(HA)
+    pts_away = pred(AH)
+
+    prediction = Concatenate()([pts_home,pts_away])
+
+
+    model = Model(inputs = [team_inputs,team_inputs_AH,node2vec_input,A_input,last_5_input,one_hot_input,one_hot_input_AH], outputs = prediction)
 
     return model
 
@@ -158,110 +181,135 @@ def ncaab_gen(node2vec_dim,N):
 
 def ncaab_ARMA(node2vec_dim,N):
 
-    channels = 100                                                        
+    channels = 40                                                        
 
 
     node2vec_input = Input(shape=(2*(N+1),node2vec_dim))  
     A_input = Input(shape=(2*(N+1),2*(N+1)))
+    A_input_sp = extract_team_GAT.To_Sparse()(A_input)
 
     team_inputs = Input(shape=(2,),dtype = tf.int64)
+    team_inputs_AH = Input(shape=(2,),dtype = tf.int64) 
     last_5_input = Input(shape = (10,))
     one_hot_input = Input(shape=(2*N,))
+    one_hot_input_AH = Input(shape=(2*N,))
 
 
 
-
-    ARMA = spektral.layers.ARMAConv(channels, order=4, iterations=1, share_weights=False, gcn_activation='relu', 
-                            dropout_rate=0.01, activation='elu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros',
+    ARMA = spektral.layers.ARMAConv(channels, order=4, iterations=1, share_weights=True, gcn_activation='relu', 
+                            dropout_rate=0.2, activation='relu', use_bias=True, kernel_initializer='glorot_normal', bias_initializer='zeros',
                             kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, 
                             kernel_constraint=None, bias_constraint=None)([node2vec_input,A_input])
-
-
 
 
     #extracts nodes for link prediction
 
 
-    game_vec = extract_team_GAT.Game_Vec(channels,N)([team_inputs,ARMA])
-
-    rshp = Reshape((int(np.floor(4*channels)),))(game_vec)
-    cat = Concatenate()([rshp,one_hot_input])
+    game_vec_HA = extract_team_GAT.Game_Vec(channels,N)([team_inputs,ARMA])
+    game_vec_AH = extract_team_GAT.Game_Vec(channels,N)([team_inputs_AH,ARMA])
 
 
+    HA = Reshape((int(np.floor(2*channels)),))(game_vec_HA)
+    AH = Reshape((int(np.floor(2*channels)),))(game_vec_AH)
 
-    dense1 = Dense(int(np.floor(5*channels)),activation = 'tanh')(cat)
-    drop1 = Dropout(.05)(dense1)
-
-    dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.03)(dense2)
-
-
-    drop2 = Concatenate()([drop2,last_5_input])
-
-    dense3 = Dense(int(np.floor(channels/2)))(drop2)
-    drop3 = Dropout(.01)(dense3)
+    HA = Concatenate()([HA,one_hot_input])
+    AH = Concatenate()([AH,one_hot_input_AH])
 
 
-    prediction = Dense(1)(drop3)
+    dense1 = Dense(int(np.floor(2.5*channels)),activation = 'tanh')
+    drop1 = Dropout(.01)
 
-    model = Model(inputs = [team_inputs,node2vec_input,A_input,last_5_input,one_hot_input], outputs = prediction)
+    dense2 = Dense(int(np.floor(channels)),activation = 'tanh')
+    drop2 = Dropout(.01)
+
+    pred = Dense(1)
+
+
+    HA = dense1(HA)
+    HA = drop1(HA)
+    HA = dense2(HA)
+    HA = drop2(HA)
+
+    AH = dense1(AH)
+    AH = drop1(AH)
+    AH = dense2(AH)
+    AH = drop2(AH)
+
+    pts_home = pred(HA)
+    pts_away = pred(AH)
+
+    prediction = Concatenate()([pts_home,pts_away])
+
+    model = Model(inputs = [team_inputs,team_inputs_AH,node2vec_input,A_input,last_5_input,one_hot_input,one_hot_input_AH], outputs = prediction)
 
     return model
 
 
 def ncaab_gin(node2vec_dim,N):
 
-    channels = 40                                                   
+    channels = 50                                                 
 
 
     node2vec_input = Input(shape=(2*(N+1),node2vec_dim))  
     A_input = Input(shape=(2*(N+1),2*(N+1)))
 
     team_inputs = Input(shape=(2,),dtype = tf.int64)
+    team_inputs_AH = Input(shape=(2,),dtype = tf.int64) 
     last_5_input = Input(shape = (10,))
     one_hot_input = Input(shape=(2*N,))
+    one_hot_input_AH = Input(shape=(2*N,))
 
 
     A_input_sp = extract_team_GAT.To_Sparse()(A_input)
 
 
 
-    GIN = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='elu', aggregate='mean', activation= None, 
-                                  use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+    GIN = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='elu', aggregate='sum', activation= 'relu', 
+                                  use_bias=True, kernel_initializer='glorot_normal', bias_initializer='zeros', kernel_regularizer=None,
                                   bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
                                   bias_constraint=None)([node2vec_input,A_input_sp])
 
 
 
-    #extracts nodes for link prediction
+    game_vec_HA = extract_team_GAT.Game_Vec(channels,N)([team_inputs,GIN])
+    game_vec_AH = extract_team_GAT.Game_Vec(channels,N)([team_inputs_AH,GIN])
 
 
-    game_vec = extract_team_GAT.Game_Vec(channels,N)([team_inputs,GIN])
+    HA = Reshape((int(np.floor(2*channels)),))(game_vec_HA)
+    AH = Reshape((int(np.floor(2*channels)),))(game_vec_AH)
+
+    HA = Concatenate()([HA,one_hot_input])
+    AH = Concatenate()([AH,one_hot_input_AH])
 
 
-    rshp = Reshape((int(np.floor(4*channels)),))(game_vec)
-    cat = Concatenate()([rshp,one_hot_input])
+    dense1 = Dense(int(np.floor(2.5*channels)),activation = 'tanh')
+    drop1 = Dropout(.3)
+
+    dense2 = Dense(int(np.floor(channels)),activation = 'tanh')
+    drop2 = Dropout(.05)
+
+    pred = Dense(1)
 
 
-    dense1 = Dense(int(np.floor(5*channels)),activation = 'tanh')(cat)
-    drop1 = Dropout(.01)(dense1)
 
-    dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.01)(dense2)
+    HA = dense1(HA)
+    HA = drop1(HA)
+    HA = dense2(HA)
+    HA = drop2(HA)
 
+    AH = dense1(AH)
+    AH = drop1(AH)
+    AH = dense2(AH)
+    AH = drop2(AH)
 
-    drop2 = Concatenate()([drop2,last_5_input])
+    pts_home = pred(HA)
+    pts_away = pred(AH)
 
-    dense3 = Dense(int(np.floor(channels/2)))(drop2)
-    drop3 = Dropout(.01)(dense3)
+    prediction = Concatenate()([pts_home,pts_away])
 
-
-    prediction = Dense(1)(drop3)
-
-    model = Model(inputs = [team_inputs,node2vec_input,A_input,last_5_input,one_hot_input], outputs = prediction)
+    model = Model(inputs = [team_inputs,team_inputs_AH,node2vec_input,A_input,last_5_input,one_hot_input,one_hot_input_AH], outputs = prediction)
 
     return model
-
 
 
 
@@ -280,8 +328,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,3,13)
-    stopdate = datetime.datetime(year,3,14)
+    startdate = datetime.datetime(year,3,28)
+    stopdate = datetime.datetime(year,3,29)
 
 
 
@@ -311,7 +359,8 @@ def main():
     weights = pd.read_excel('data/weights.xls',sheet_name = 0,header = 0)
     weights = weights.to_numpy(dtype = object,copy = True)
 
-
+    tourney_games = pd.read_excel('data/tourney_games8.xls',sheet_name = 0,header = 0)
+    tourney_games = tourney_games.to_numpy(dtype = object,copy = True)
 
 
 
@@ -355,7 +404,7 @@ def main():
     runs = 0
 
 
-    test_games_all = np.zeros((5000,8),dtype = object)
+    test_games_all = np.zeros((5000,9),dtype = object)
     test_count = 0
 
     #For each day a game occurs, the model constructs a training and validation set using all games played previously in the season
@@ -403,12 +452,12 @@ def main():
 
             node2vec_dim = 40
             node2vec_p = 1
-            node2vec_q = 2
+            node2vec_q = 1
 
-            height = 6
-            n2v_walklen = 15
-            n2v_numwalks = 10
-            n2v_wsize = 7
+            height = 8
+            n2v_walklen = 10
+            n2v_numwalks = 20
+            n2v_wsize = 8
             n2v_iter = 1
             n2v_workers = 8
 
@@ -454,7 +503,7 @@ def main():
 
 
 
-                    x_train, y_train,feature_train,A_Train,last_5_train, one_hot_train = construct_from_data.GAT_training_set(Data_Full,
+                    x_train,x_train_AH,y_train,feature_train,A_Train,last_5_train,one_hot_train,one_hot_train_AH = construct_from_data.GAT_training_set(Data_Full,
                                                                                                                     Lines,schedule,HomeAway,
                                                                                                                     day,feature_node2vec,
                                                                                                                     A_OffDef)
@@ -463,21 +512,21 @@ def main():
 
                 elif model_type == 'ncaab_ARMA':
 
-                    x_train, y_train,feature_train,A_Train,last_5_train,one_hot_train = construct_from_data.GAT_training_set(Data_Full,
+                    x_train,x_train_AH,y_train,feature_train,A_Train,last_5_train,one_hot_train,one_hot_train_AH = construct_from_data.GAT_training_set(Data_Full,
                                                                                                                     Lines,schedule,HomeAway,
                                                                                                                     day,feature_node2vec,
                                                                                                                     ARMA)
 
                 elif model_type == 'ncaab_gin':
 
-                    x_train, y_train,feature_train,A_Train, last_5_train,one_hot_train = construct_from_data.gin_training_set(Data_Full,
+                    x_train,x_train_AH,y_train,feature_train,A_Train, last_5_train,one_hot_train,one_hot_train_AH = construct_from_data.GAT_training_set(Data_Full,
                                                                                                                     Lines,schedule,HomeAway,
                                                                                                                     day,feature_node2vec,
-                                                                                                                    ARMA)
+                                                                                                                    A_OffDef)
 
 
 
-            call_backs = EarlyStopping(monitor='val_loss', min_delta=0, patience=150, verbose=1, restore_best_weights= True)
+            call_backs = EarlyStopping(monitor='val_loss', min_delta=0, patience=150, verbose=1, restore_best_weights= False)
 
             #Train the model on all previous games
 
@@ -497,22 +546,22 @@ def main():
             elif model_type == 'ncaab_gen':
                 model = ncaab_gen(node2vec_dim,N)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,feature_train,A_Train,last_5_train,one_hot_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                model.fit([x_train,x_train_AH,feature_train,A_Train,last_5_train,one_hot_train,one_hot_train_AH],y_train, 
+                            epochs = 3,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'ncaab_ARMA':
                 model = ncaab_ARMA(node2vec_dim,N)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,feature_train,A_Train,last_5_train,one_hot_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                model.fit([x_train,x_train_AH,feature_train,A_Train,last_5_train,one_hot_train,one_hot_train_AH],y_train, 
+                            epochs = 3,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
             elif model_type == 'ncaab_gin':
                 model = ncaab_gin(node2vec_dim,N)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
-                model.fit([x_train,feature_train,A_Train,last_5_train,one_hot_train],y_train, 
-                            epochs = 5,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
+                model.fit([x_train,x_train_AH,feature_train,A_Train,last_5_train,one_hot_train,one_hot_train_AH],y_train, 
+                            epochs = 3,batch_size = 1,validation_split = 0.05,callbacks = [call_backs])
                 model.summary()
 
 
@@ -529,6 +578,10 @@ def main():
 
                 Pred = model.predict([x_test,last_5_test,one_hot_test])
 
+                x_test_trn, last_5_test_trn,one_hot_test_trn = construct_from_data.tourney_set_ncaabwalkod(TeamList,S_OffDef_stack,feature_node2vec,height,node2vec_dim)
+
+                Pred_trn =  model.predict([x_test_trn,last_5_test_trn,one_hot_test_trn])
+
                 if year < 2021:
                     Eval = model.evaluate([x_test,last_5_test,one_hot_test],test_y,verbose=0)
                     loss = loss + Eval[0]
@@ -539,24 +592,38 @@ def main():
 
                 
 
-                x_test,feature_test,A_test,last_5_test, test_y,one_hot_test = construct_from_data.GAT_test_set(Data_Full,games,
+                x_test,x_test_AH,feature_test,A_test,last_5_test,test_y,one_hot_test,one_hot_test_AH = construct_from_data.GAT_test_set(Data_Full,games,
                                                                                                                 testgamecount,feature_node2vec,
                                                                                                                 A_OffDef,day,year)
 
-                Pred = model.predict([x_test,feature_test,A_test,last_5_test,one_hot_test],batch_size=1)
+                Pred = model.predict([x_test,x_test_AH,feature_test,A_test,last_5_test,one_hot_test,one_hot_test_AH],batch_size=1)
+
+                x_test_trn,x_test_trn_AH,feature_test_trn,A_Test,last_5_test_trn,one_hot_test_trn,one_hot_test_trn_AH = construct_from_data.tourney_set_GAT(TeamList,
+                                                                                                                                           feature_node2vec,A_OffDef)
+
+                Pred_trn =  model.predict([x_test_trn,x_test_trn_AH,feature_test_trn,A_Test,last_5_test_trn,one_hot_test_trn,one_hot_test_trn_AH],batch_size=1)
+
+
                 if year < 2021:
-                    Eval = model.evaluate([x_test,feature_test,A_test,last_5_test,one_hot_test],test_y,verbose=0,batch_size=1)
+                    Eval = model.evaluate([x_test,x_test_AH,feature_test,A_test,last_5_test,one_hot_test,one_hot_test_AH],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
 
             elif model_type == 'ncaab_ARMA':
-                x_test,feature_test,A_test,last_5_test, test_y,one_hot_test = construct_from_data.GAT_test_set(Data_Full,games,
+                x_test,x_test_AH,feature_test,A_test,last_5_test, test_y,one_hot_test,one_hot_test_AH = construct_from_data.GAT_test_set(Data_Full,games,
                                                                                                                 testgamecount,feature_node2vec,
                                                                                                                 ARMA,day,year)
 
-                Pred = model.predict([x_test,feature_test,A_test,last_5_test,one_hot_test],batch_size=1)
+                Pred = model.predict([x_test,x_test_AH,feature_test,A_test,last_5_test,one_hot_test,one_hot_test_AH],batch_size=1)
+
+                x_test_trn,x_test_trn_AH,feature_test_trn,A_Test,last_5_test_trn,one_hot_test_trn,one_hot_test_trn_AH = construct_from_data.tourney_set_GAT(TeamList,
+                                                                                                                                           feature_node2vec,A_OffDef)
+
+                Pred_trn =  model.predict([x_test_trn,x_test_trn_AH,feature_test_trn,A_Test,last_5_test_trn,one_hot_test_trn,one_hot_test_trn_AH],batch_size=1)
+
+
                 if year < 2021:
-                    Eval = model.evaluate([x_test,feature_test,A_test,last_5_test,one_hot_test],test_y,verbose=0,batch_size=1)
+                    Eval = model.evaluate([x_test,x_test_AH,feature_test,A_test,last_5_test,one_hot_test,one_hot_test_AH],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
 
@@ -564,19 +631,29 @@ def main():
 
                 
 
-                x_test,feature_test,A_test,last_5_test, test_y,one_hot_test = construct_from_data.gin_test_set(Data_Full,games,
+                x_test,x_test_AH,feature_test,A_test,last_5_test, test_y,one_hot_test,one_hot_test_AH = construct_from_data.gin_test_set(Data_Full,games,
                                                                                                                 testgamecount,feature_node2vec,
                                                                                                                 A_OffDef,day,year)
 
-                Pred = model.predict([x_test,feature_test,A_test,last_5_test,one_hot_test],batch_size=1)
+                Pred = model.predict([x_test,x_test_AH,feature_test,A_test,last_5_test,one_hot_test,one_hot_test_AH],batch_size=1)
+
+                x_test_trn,x_test_trn_AH,feature_test,A_Test,last_5_test_trn,one_hot_test_trn,one_hot_test_trn_AH = construct_from_data.tourney_set_gin(TeamList,
+                                                                                                                                       feature_node2vec,A_OffDef)
+
+                Pred_trn =  model.predict([x_test_trn,x_test_trn_AH,feature_test,A_Test,last_5_test_trn,one_hot_test_trn,one_hot_test_trn_AH],batch_size=1)
+
                 if year < 2021:
-                    Eval = model.evaluate([x_test,feature_test,A_test,last_5_test,one_hot_test],test_y,verbose=0,batch_size=1)
+                    Eval = model.evaluate([x_test,x_test_AH,feature_test,A_test,last_5_test,one_hot_test,one_hot_test_AH],test_y,verbose=0,batch_size=1)
                     loss = loss + Eval[0]
 
 
 
             results= np.round(Pred,decimals = 1)
+            results_trn = np.round(Pred_trn,decimals = 1)
+
             games = np.concatenate((games,Pred),axis = 1)
+            tourney_games = np.concatenate((tourney_games,results_trn),axis = 1)
+
 
             test_count = test_count + games.shape[0]
 
@@ -590,7 +667,19 @@ def main():
             df.style.set_properties(**{'text-align': 'left'})
             df1 = df.to_string(index=False,header = False)
 
-            print(df1)
+            #print(df1)
+
+            df = pd.DataFrame(tourney_games)
+            df.style.set_properties(**{'text-align': 'left'})
+            df2 = df.to_string(index=False,header = False)
+
+            print(df2)
+
+            df.to_excel('predictions/brackets/' + model_type + '_predictions_round8.xls', header = ['Home','Away','score','score'],index=False)
+
+            pdb.set_trace()
+
+
 
             if today == day+1:
                 if model_type == 'ncaabwalkod':

@@ -1370,7 +1370,7 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
 
     gamecount_train = 0
     
-    y_train = np.zeros((6500,),dtype = float)
+    y_train = np.zeros((6500,2),dtype = float)
     last_5_train = np.zeros((6500,10),dtype = float)
 
 
@@ -1423,15 +1423,15 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
 
 
 
-                h_vec = np.concatenate((h_vec_off,h_vec_def),axis = -1)
-                a_vec = np.concatenate((a_vec_off,a_vec_def),axis = -1)
+                h_vec = np.concatenate((h_vec_off,a_vec_def),axis = -1)
+                a_vec = np.concatenate((a_vec_off,h_vec_def),axis = -1)
 
 
                         
                 x_train_home[gamecount_train-1,:] = h_vec
                 x_train_away[gamecount_train-1,:] = a_vec
 
-                y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
+                y_train[gamecount_train-1] = [Data_Full[j,8,k],Data_Full[j,9,k]]
 
                 one_hot[gamecount_train-1,k] = 1
                 one_hot[gamecount_train-1,opponent+N]
@@ -1458,18 +1458,20 @@ def Training_Set_ncaabwalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stac
 
 
 
-    y_train = y_train[0:gamecount_train]
+    y_train = y_train[0:gamecount_train,:]
     last_5_train = last_5_train[0:gamecount_train,:]
     one_hot = one_hot[0:gamecount_train]
 
 
 
 
-    x_train = np.zeros((gamecount_train,4*height*node2vec_dim),dtype = float)
-
+    x_train = np.zeros((gamecount_train,2,2*height*node2vec_dim),dtype = float)
 
     for c in range(gamecount_train):
-        x_train[c] = np.concatenate((x_train_home[c,:],x_train_away[c,:]),axis = -1)
+        x_train[c,0,:] = x_train_home[c,:]
+        x_train[c,1,:] = x_train_away[c,:]
+
+
 
     return x_train, y_train,last_5_train,one_hot
 
@@ -1487,7 +1489,7 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
 
     last_5_test = np.zeros((testgamecount,10),dtype = float)
 
-    test_y = np.zeros((testgamecount,),dtype = float)
+    test_y = np.zeros((testgamecount,2),dtype = float)
 
     one_hot = np.zeros((testgamecount,2*N),dtype = float)
 
@@ -1528,8 +1530,8 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
 
 
 
-        h_vec_t = np.concatenate((h_vec_off_t,h_vec_def_t),axis = -1)
-        a_vec_t = np.concatenate((a_vec_off_t,a_vec_def_t),axis = -1)
+        h_vec_t = np.concatenate((h_vec_off_t,a_vec_def_t),axis = -1)
+        a_vec_t = np.concatenate((a_vec_off_t,h_vec_def_t),axis = -1)
 
 
         x_test_home[i,:] = h_vec_t
@@ -1540,7 +1542,7 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
 
 
         if year < 2021:
-            test_y[i] = games[i,4] - games[i,5]
+            test_y[i] = [games[i,4],games[i,5]]
 
 
 
@@ -1558,10 +1560,12 @@ def Test_Set_ncaabwalkod(Data_Full,games,testgamecount,S_OffDef_stack,feature_no
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
 
-    x_test = np.zeros((testgamecount,4*height*node2vec_dim),dtype = float)
+    x_test = np.zeros((testgamecount,2,2*height*node2vec_dim),dtype = float)
 
     for c in range(testgamecount):
-        x_test[c] = np.concatenate((x_test_home[c,:],x_test_away[c,:]),axis = -1)
+        x_test[c,0,:] = x_test_home[c,:]
+        x_test[c,1,:] = x_test_away[c,:]
+
 
     return x_test, last_5_test, test_y,one_hot
 
@@ -1612,11 +1616,13 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
     gamecount_train = 0
 
     x_train = np.zeros((6500,2),dtype = int)
-    y_train = np.zeros((6500,),dtype = float)
+    x_train_AH = np.zeros((6500,2),dtype = int)
+    y_train = np.zeros((6500,2),dtype = float)
     feature_train = np.zeros((6500,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     A_Train = np.zeros((6500,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
     last_5_train = np.zeros((6500,10),dtype = float)
     one_hot = np.zeros((6500,2*N),dtype = float)
+    one_hot_AH = np.zeros((6500,2*N),dtype = float)
 
     #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
 
@@ -1631,10 +1637,16 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
                 x_train[gamecount_train-1,0] = k
                 x_train[gamecount_train-1,1] = int(opponent)
 
-                y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
+                x_train_AH[gamecount_train-1,0] = int(opponent)
+                x_train_AH[gamecount_train-1,1] = k
+
+                y_train[gamecount_train-1,:] = [Data_Full[j,8,k],Data_Full[j,9,k]]
 
                 one_hot[gamecount_train-1,k] = 1
                 one_hot[gamecount_train-1,opponent+N]
+
+                one_hot_AH[gamecount_train-1,opponent] = 1
+                one_hot_AH[gamecount_train-1,k+N] = 1
 
 
                 A_Train[gamecount_train-1,:,:] = A_OffDef
@@ -1662,28 +1674,32 @@ def GAT_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
                 
 
 
-    y_train = y_train[0:gamecount_train]
+    y_train = y_train[0:gamecount_train,:]
     x_train = x_train[0:gamecount_train,:]
+    x_train_AH =  x_train_AH[0:gamecount_train,:]
     A_Train = A_Train[0:gamecount_train,:,:]
     feature_train = feature_train[0:gamecount_train,:,:]
     last_5_train = last_5_train[0:gamecount_train,:]
     one_hot = one_hot[0:gamecount_train]
+    one_hot_AH = one_hot_AH[0:gamecount_train]
 
 
-    return x_train,y_train,feature_train,A_Train,last_5_train,one_hot
+    return x_train,x_train_AH,y_train,feature_train,A_Train,last_5_train,one_hot,one_hot_AH
 
-def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_OffDef):
+def gin_training_set(Data_Full,schedule,HomeAway,day,feature_node2vec,A_OffDef):
 
     N = Data_Full.shape[2]
 
     gamecount_train = 0
 
     x_train = np.zeros((6500,2),dtype = int)
-    y_train = np.zeros((6500,),dtype = float)
+    x_train_AH = np.zeros((6500,2),dtype = int)
+    y_train = np.zeros((6500,2),dtype = float)
     feature_train = np.zeros((6500,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
     A_Train = np.zeros((6500,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
     last_5_train = np.zeros((6500,10),dtype = float)
     one_hot = np.zeros((6500,2*N),dtype = float)
+    one_hot_AH = np.zeros((6500,2*N),dtype = float)
 
 
     #A GAT representation will be computed for each node in both SOffDef and the Vegas graphs
@@ -1699,10 +1715,16 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
                 x_train[gamecount_train-1,0] = k
                 x_train[gamecount_train-1,1] = int(opponent)
 
-                y_train[gamecount_train-1] = Data_Full[j,8,k] - Data_Full[j,9,k]
+                x_train_AH[gamecount_train-1,0] = int(opponent)
+                x_train_AH[gamecount_train-1,1] = k
+
+                y_train[gamecount_train-1,:] = [Data_Full[j,8,k],Data_Full[j,9,k]]
 
                 one_hot[gamecount_train-1,k] = 1
                 one_hot[gamecount_train-1,opponent+N]
+
+                one_hot_AH[gamecount_train-1,opponent] = 1
+                one_hot_AH[gamecount_train-1,k+N] = 1
 
 
                 A_Train[gamecount_train-1,:,:] = A_OffDef
@@ -1730,12 +1752,14 @@ def gin_training_set(Data_Full,Lines,schedule,HomeAway,day,feature_node2vec,A_Of
                 
 
 
-    y_train = y_train[0:gamecount_train]
+    y_train = y_train[0:gamecount_train,:]
     x_train = x_train[0:gamecount_train,:]
+    x_train_AH = x_train_AH[0:gamecount_train,:]
     A_Train = A_Train[0:gamecount_train,:,:]
     feature_train = feature_train[0:gamecount_train,:,:]
     last_5_train = last_5_train[0:gamecount_train,:]
     one_hot = one_hot[0:gamecount_train]
+    one_hot_AH = one_hot[0:gamecount_train]
 
 
     return x_train,y_train,feature_train,A_Train,last_5_train,one_hot
@@ -1749,19 +1773,27 @@ def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
     A_Test = np.zeros((testgamecount,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
 
     x_test = np.zeros((testgamecount,2),dtype = float)
+    x_test_AH = np.zeros((testgamecount,2),dtype = float)
     last_5_test = np.zeros((testgamecount,10),dtype = float)
-    test_y = np.zeros((testgamecount,),dtype = float)
+    test_y = np.zeros((testgamecount,2),dtype = float)
     one_hot = np.zeros((testgamecount,2*N),dtype = float)
+    one_hot_AH = np.zeros((testgamecount,2*N),dtype = float)
 
     for i in range(testgamecount):
         x_test[i,0] = games[i,0]
         x_test[i,1] = games[i,1]
 
+        x_test_AH[i,0] = games[i,1]
+        x_test_AH[i,1] = games[i,0]
+
         one_hot[i,games[i,0]] = 1
         one_hot[i,games[i,1]+N] = 1
 
+        one_hot_AH[i,games[i,1]] = 1
+        one_hot_AH[i,games[i,0]+N] = 1
+
         if year < 2021:
-            test_y[i] = games[i,4] - games[i,5]
+            test_y[i,:] = [games[i,4],games[i,5]]
 
         A_Test[i,:,:] = A_OffDef
         feature_test[i,:,:] = feature_node2vec
@@ -1779,7 +1811,10 @@ def GAT_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
 
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
-    return x_test,feature_test,A_Test,last_5_test, test_y,one_hot
+
+
+
+    return x_test,x_test_AH,feature_test,A_Test,last_5_test, test_y,one_hot,one_hot_AH
 
 def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,year):
 
@@ -1790,20 +1825,28 @@ def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
     A_Test = np.zeros((testgamecount,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
 
     x_test = np.zeros((testgamecount,2),dtype = float)
+    x_test_AH = np.zeros((testgamecount,2),dtype = float)
     last_5_test = np.zeros((testgamecount,10),dtype = float)
     test_y = np.zeros((testgamecount,),dtype = float)
     one_hot = np.zeros((testgamecount,2*N),dtype = float)
+    one_hot_AH = np.zeros((testgamecount,2*N),dtype = float)
 
 
     for i in range(testgamecount):
         x_test[i,0] = games[i,0]
         x_test[i,1] = games[i,1]
 
+        x_test_AH[i,0] = games[i,1]
+        x_test_AH[i,1] = games[i,0]
+
         one_hot[i,games[i,0]] = 1
         one_hot[i,games[i,1]+N] = 1
 
+        one_hot_AH[i,games[i,1]] = 1
+        one_hot_AH[i,games[i,0]+N] = 1
+
         if year < 2021:
-            test_y[i] = games[i,4] - games[i,5]
+            test_y[i] = [games[i,4],games[i,5]]
 
         A_Test[i,:,:] = A_OffDef
         feature_test[i,:,:] = feature_node2vec
@@ -1821,7 +1864,7 @@ def gin_test_set(Data_Full,games,testgamecount,feature_node2vec,A_OffDef,day,yea
 
             last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
-    return x_test,feature_test,A_Test,last_5_test, test_y,one_hot
+    return x_test,x_test_AH,feature_test,A_Test,last_5_test,test_y,one_hot,one_hot_AH
 
 
 def Vegas_Graph(schedule,Lines,day):
@@ -1877,6 +1920,210 @@ def Vegas_Graph(schedule,Lines,day):
     Vegas_Graph[N,:] = 1/(np.sum(Vegas_Graph[N,:]))*Vegas_Graph[N,:]
 
     return Vegas_Graph
+
+
+def tourney_set_ncaabwalkod(TeamList,S_OffDef_stack,feature_node2vec,height,node2vec_dim):
+
+    N = TeamList.shape[0]
+
+    games = pd.read_excel('data/tourney_games8.xls',sheet_name = 0,header = 0)
+    games = games.to_numpy(dtype = object,copy = True)
+
+    for i in range(games.shape[0]):
+
+        for j in range(N):
+            if games[i,0] == TeamList[j]:
+                games[i,0] = j
+                break
+
+        for k in range(N):
+            if games[i,1] == TeamList[k]:
+                games[i,1] = k
+                break
+
+
+
+
+    x_test_home = np.zeros((games.shape[0],2*height*node2vec_dim),dtype = float)
+    x_test_away = np.zeros((games.shape[0],2*height*node2vec_dim),dtype = float)
+
+
+    last_5_test = np.zeros((games.shape[0],10),dtype = float)
+
+    test_y = np.zeros((games.shape[0],),dtype = float)
+
+    one_hot = np.zeros((games.shape[0],2*N),dtype = float)
+
+
+    for i in range(games.shape[0]):
+
+        Q_h_off_t = S_OffDef_stack[:,games[i,0],:].T
+        Q_a_def_t = S_OffDef_stack[:,games[i,1]+N+1,:].T
+
+
+        Q_a_off_t = S_OffDef_stack[:,games[i,1],:].T
+        Q_h_def_t = S_OffDef_stack[:,games[i,0]+N+1,:].T
+
+
+        h_sheet_off_t = np.matmul(Q_h_off_t,feature_node2vec)
+        a_sheet_def_t = np.matmul(Q_a_def_t,feature_node2vec)
+
+
+        a_sheet_off_t = np.matmul(Q_a_off_t,feature_node2vec)
+        h_sheet_def_t = np.matmul(Q_h_def_t,feature_node2vec)
+
+
+
+        h_vec_off_t = h_sheet_off_t.flatten()
+        a_vec_def_t = a_sheet_def_t.flatten()
+
+        a_vec_off_t = a_sheet_off_t.flatten()
+        h_vec_def_t = h_sheet_def_t.flatten() 
+
+
+                      
+        h_vec_off_t = h_vec_off_t.T
+        a_vec_def_t = a_vec_def_t.T
+
+        a_vec_off_t = a_vec_off_t.T
+        h_vec_def_t = h_vec_def_t.T
+
+
+
+
+        h_vec_t = np.concatenate((h_vec_off_t,a_vec_def_t),axis = -1)
+        a_vec_t = np.concatenate((a_vec_off_t,h_vec_def_t),axis = -1)
+
+
+        x_test_home[i,:] = h_vec_t
+        x_test_away[i,:] = a_vec_t
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
+
+
+
+
+    x_test = np.zeros((games.shape[0],2,2*height*node2vec_dim),dtype = float)
+
+    for c in range(games.shape[0]):
+        x_test[c,0,:] = x_test_home[c,:]
+        x_test[c,1,:] = x_test_away[c,:]
+
+
+    return x_test,last_5_test,one_hot
+
+def tourney_set_GAT(TeamList,feature_node2vec,A_OffDef):
+
+    N = TeamList.shape[0]
+
+
+    games = pd.read_excel('data/tourney_games8.xls',sheet_name = 0,header = 0)
+    games = games.to_numpy(dtype = object,copy = True)
+
+    for i in range(games.shape[0]):
+
+        for j in range(N):
+            if games[i,0] == TeamList[j]:
+                games[i,0] = j
+                break
+
+        for k in range(N):
+            if games[i,1] == TeamList[k]:
+                games[i,1] = k
+                break
+
+    feature_test = np.zeros((games.shape[0],feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
+
+    A_Test = np.zeros((games.shape[0],A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
+
+    x_test = np.zeros((games.shape[0],2),dtype = float)
+    x_test_AH = np.zeros((games.shape[0],2),dtype = float)
+    last_5_test = np.zeros((games.shape[0],10),dtype = float)
+    one_hot = np.zeros((games.shape[0],2*N),dtype = float)
+    one_hot_AH = np.zeros((games.shape[0],2*N),dtype = float)
+
+
+
+
+    for i in range(games.shape[0]):
+        x_test[i,0] = games[i,0]
+        x_test[i,1] = games[i,1]
+
+        x_test_AH[i,0] = games[i,1]
+        x_test_AH[i,1] = games[i,0]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
+
+        one_hot_AH[i,games[i,1]] = 1
+        one_hot_AH[i,games[i,0]+N] = 1
+
+        A_Test[i,:,:] = A_OffDef
+        feature_test[i,:,:] = feature_node2vec
+
+
+
+
+    return x_test,x_test_AH,feature_test,A_Test,last_5_test,one_hot,one_hot_AH
+
+
+def tourney_set_gin(TeamList,feature_node2vec,A_OffDef):
+
+    N = TeamList.shape[0]
+
+
+    games = pd.read_excel('data/tourney_games8.xls',sheet_name = 0,header = 0)
+    games = games.to_numpy(dtype = object,copy = True)
+
+    for i in range(games.shape[0]):
+
+        for j in range(N):
+            if games[i,0] == TeamList[j]:
+                games[i,0] = j
+                break
+
+        for k in range(N):
+            if games[i,1] == TeamList[k]:
+                games[i,1] = k
+                break
+
+    feature_test = np.zeros((games.shape[0],feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
+
+    A_Test = np.zeros((games.shape[0],A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
+
+    x_test = np.zeros((games.shape[0],2),dtype = float)
+    x_test_AH = np.zeros((games.shape[0],2),dtype = float)
+    last_5_test = np.zeros((games.shape[0],10),dtype = float)
+    one_hot = np.zeros((games.shape[0],2*N),dtype = float)
+    one_hot_AH = np.zeros((games.shape[0],2*N),dtype = float)
+
+
+
+
+    for i in range(games.shape[0]):
+        x_test[i,0] = games[i,0]
+        x_test[i,1] = games[i,1]
+
+        x_test_AH[i,0] = games[i,1]
+        x_test_AH[i,1] = games[i,0]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
+
+        one_hot_AH[i,games[i,1]] = 1
+        one_hot_AH[i,games[i,0]+N] = 1
+
+
+        A_Test[i,:,:] = A_OffDef
+        feature_test[i,:,:] = feature_node2vec
+
+
+
+
+    return x_test,x_test_AH,feature_test,A_Test,last_5_test,one_hot,one_hot_AH
+
+
 
 
 
