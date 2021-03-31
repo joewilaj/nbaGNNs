@@ -12,5 +12,5 @@ Now, for a given game, the new representations of both offenses and defenses, al
 conda env create -f deepnba.yml
 
 
-*Vegas Lines are not used in NCAA Model. To update data use this fork of sportsipy: https://github.com/joewilaj/sportsipy
+*Vegas Lines are not used in NCAA models. To update data use this fork of sportsipy: https://github.com/joewilaj/sportsipy
 
