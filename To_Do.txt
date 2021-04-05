@@ -2,7 +2,7 @@ To Do:
 
 Create Player-Offense-Defense Graph using sportsipy player boxscores:
 -Has offense and defense node for each player and for each team plus player and team oracle nodes: 2(N + P + 2)
--edges represent either team-team or team-player interaction (player-player edges require higher level dataset eg SportVu for 
+-edges represent either team-team or team-player interaction (player-player edges require higher level dataset eg SportVu for nba
 
 Use both edge and node features in representations.
 
@@ -13,7 +13,7 @@ Apply ID aware GNNs
 -Use for inductive learning (current model is only transductive)
 
 
-Build Ensemble Model using GNNs with various deep learning approaches (recurrent or temporal attention architectures, Random Forest,)
+Build Ensemble Model using GNNs with various deep learning approaches (recurrent or temporal attention architectures, Random Forest,etc.)
 
 
 Improve performance of current models by tuning hyper parameters and optimizing layer choice
