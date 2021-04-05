@@ -13,7 +13,7 @@ Apply ID aware GNNs
 -Use for inductive learning (current model is only transductive)
 
 
-Build Ensemble Model using GNNs with various deep learning approaches (recurrent or temporal attention architectures, Random Forest,etc.)
+Build Ensemble Model using GNNs together with various deep learning approaches (recurrent or temporal attention architectures, Random Forest,etc.)
 
 
 Improve performance of current models by tuning hyper parameters and optimizing layer choice
