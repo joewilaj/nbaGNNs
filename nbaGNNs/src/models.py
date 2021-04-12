@@ -50,9 +50,9 @@ np.set_printoptions(threshold=sys.maxsize)
 #arXiv:1511.02136v6 [cs.LG]
 
 
-#Convolution operations performed when constructing inputs in nbawalkod_train() and nbawalkod_test()
+#Convolution operations performed when constructing inputs in nba_DCNN_train() and nba_DCNN_test()
 
-def DCNN_nbawalkod(height,node2vec_dim): 
+def nba_DCNN(height,node2vec_dim): 
 
 
     inputs = Input(shape=(6*height*node2vec_dim,))
@@ -96,7 +96,7 @@ def DCNN_nbawalkod(height,node2vec_dim):
 
 def nba_gen(node2vec_dim):
 
-    channels = 60                                    
+    channels = 40                                    
 
 
     node2vec_input = Input(shape=(62,node2vec_dim))  
@@ -137,15 +137,15 @@ def nba_gen(node2vec_dim):
 
 
     dense1 = Dense(int(np.floor(6.5*channels)),activation = 'tanh')(cat)
-    drop1 = Dropout(.05)(dense1)
+    drop1 = Dropout(.01)(dense1)
 
     dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.05)(dense2)
+    drop2 = Dropout(.01)(dense2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
     dense3 = Dense(int(np.floor(channels/2)))(drop2)
-    drop3 = Dropout(.05)(dense3)
+    drop3 = Dropout(.01)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
 
@@ -251,14 +251,14 @@ def nba_gin(node2vec_dim):
 
 
 
-    GIN = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation=None, 
+    GIN = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation= None, 
                                   use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
                                   bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
                                   bias_constraint=None)([node2vec_input,A_input_sp])
 
 
 
-    GIN_Veg = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation=None, 
+    GIN_Veg = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation= None, 
                                   use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
                                   bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
                                   bias_constraint=None)([node2vec_Veg_input,A_Veg_input_sp])
@@ -273,15 +273,15 @@ def nba_gin(node2vec_dim):
 
 
     dense1 = Dense(int(np.floor(6.5*channels)),activation = 'tanh')(cat)
-    drop1 = Dropout(.05)(dense1)
+    drop1 = Dropout(.01)(dense1)
 
     dense2 = Dense(int(np.floor(2*channels)),activation = 'tanh')(drop1)
-    drop2 = Dropout(.05)(dense2)
+    drop2 = Dropout(.01)(dense2)
 
     drop2 = Concatenate()([drop2,last_5_input])
 
     dense3 = Dense(int(np.floor(channels/2)))(drop2)
-    drop3 = Dropout(.05)(dense3)
+    drop3 = Dropout(.01)(dense3)
 
     add_line = Concatenate()([drop3,line_input])
 
@@ -296,6 +296,85 @@ def nba_gin(node2vec_dim):
 
 
 
+def discriminator(node2vec_dim):
+
+    channels = 40                                                   
+
+
+    feature_input = Input(shape=(62,node2vec_dim))  
+    feature_Veg_input = Input(shape=(31,node2vec_dim))
+    feature_M_input = Input(shape=(31,node2vec_dim))
+    A_input = Input(shape=(62,62))
+    A_Veg_input = Input(shape=(31,31))
+    M_Graph_input = Input(shape=(31,31))
+
+    team_inputs = Input(shape=(2,),dtype = tf.int64)
+    line_input = Input(shape=(1,))
+    model_input = Input(shape=(1,))
+    last_5_input = Input(shape = (10,))
+    one_hot_input = Input(shape=(60,))
+
+    A_input_sp = extract_team_GAT.To_Sparse()(A_input)
+    A_Veg_input_sp = extract_team_GAT.To_Sparse()(A_Veg_input)
+    M_Graph_input_sp = extract_team_GAT.To_Sparse()(M_Graph_input)
+
+
+
+
+
+    GIN = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation= None, 
+                                  use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                  bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
+                                  bias_constraint=None)([feature_input,A_input_sp])
+
+
+
+    GIN_Veg = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation= None, 
+                                  use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                  bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
+                                  bias_constraint=None)([feature_Veg_input,A_Veg_input_sp])
+
+
+    GIN_M = spektral.layers.GINConv(channels, epsilon=None, mlp_hidden=[channels, channels], mlp_activation='relu', aggregate='sum', activation= None, 
+                                  use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
+                                  bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
+                                  bias_constraint=None)([feature_M_input,M_Graph_input_sp])
+
+    game_vec = extract_team_GAT.Game_Vec_D(channels)([team_inputs,GIN,GIN_Veg,GIN_M])
+
+
+
+    rshp = Reshape((int(np.floor(8*channels)),))(game_vec)
+    cat = Concatenate()([rshp,one_hot_input,line_input,model_input])
+
+
+
+    dense1 = Dense(int(np.floor(8.5*channels)),activation = 'tanh')(cat)
+    drop1 = Dropout(.01)(dense1)
+
+    dense2 = Dense(int(np.floor(4*channels)),activation = 'tanh')(drop1)
+    drop2 = Dropout(.01)(dense2)
+
+    drop2 = Concatenate()([drop2,last_5_input])
+
+    dense3 = Dense(int(np.floor(channels/2)))(drop2)
+    drop3 = Dropout(.01)(dense3)
+
+    
+
+    prediction = Dense(2,activation = 'softmax')(drop3)
+
+
+
+    #extracts nodes for link prediction
+
+
+    model = Model(inputs = [team_inputs,line_input,model_input,feature_input,A_input,feature_Veg_input,A_Veg_input,feature_M_input,
+               M_Graph_input,last_5_input,one_hot_input], outputs = prediction)
+
+    return model
+
+
 
 def main():
 
@@ -303,17 +382,17 @@ def main():
 
 
     
-    model_type = 'nbawalkod'
+    #model_type = 'nba_DCNN'
     #model_type = 'nba_gen'
     #model_type = 'nba_ARMA'
-    #model_type = 'nba_gin'
+    model_type = 'nba_gin'
 
     year = 2021
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,3,13)
-    stopdate = datetime.datetime(year,3,14)
+    startdate = datetime.datetime(year,3,1)
+    stopdate = datetime.datetime(year,4,12)
 
 
 
@@ -388,7 +467,7 @@ def main():
     total_wins = 0
     money_line_wins = 0
     moneyline_count = 0
-    window = 3  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
+    window = 1  #parameter to constrain the test set to games where the model prediction and vegas prediction differ more than 'window'
     push = 0
     ties = 0
 
@@ -445,20 +524,20 @@ def main():
             #hyperparameters for node2vec
             #Grover, Leskovec, node2vec: Scalable Feature Learning for Networks, July 3, 2016 #arXiv:1607.00653v1 [cs.SI]
 
-            node2vec_dim = 30
+            node2vec_dim = 20
             node2vec_p = 1
-            node2vec_q = 1
+            node2vec_q = 1  # q < 1 DFS (homophily)   or  q > 1 BFS (structural equivalence)
 
-            height = 4
+            height = 3
             n2v_walklen = 6
             n2v_numwalks = 20
-            n2v_wsize = 8
+            n2v_wsize = 7
             n2v_iter = 1
             n2v_workers = 8
 
 
 
-            if model_type == 'nbawalkod' or model_type == 'nba_gen' or model_type == 'nba_ARMA' or model_type == 'nba_gin':
+            if model_type == 'nba_DCNN' or model_type == 'nba_gen' or model_type == 'nba_ARMA' or model_type == 'nba_gin':
 
                 G_orc = (1-epsilon)*(S_OffDef) + epsilon*(1/62)*np.ones((62,62),dtype = float)
                 G_orc = utils_data.sto_mat(G_orc)
@@ -490,7 +569,7 @@ def main():
                     utils_data.plot_node2vec(feature_node2vec_Veg,TeamList_Lines,PageRank_Off,PageRank_Def,Vegas_Graph)
                 
 
-                if model_type == 'nbawalkod':
+                if model_type == 'nba_DCNN':
     
     
                     S_OffDef_stack = np.zeros((62,62,height),dtype = float)
@@ -502,7 +581,7 @@ def main():
 
 
 
-                    x_train, y_train, line_train,last_5_train, one_hot_train = construct_from_data.Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,
+                    x_train, y_train, line_train,last_5_train, one_hot_train = construct_from_data.Training_Set_nba_DCNN(Data_Full,Lines,schedule,HomeAway,day,
                                                                                                 S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim)
 
 
@@ -540,8 +619,8 @@ def main():
             #opt = SGD(lr = .001)   
             opt = Adam(learning_rate=0.001)         
 
-            if model_type == 'nbawalkod':
-                model = DCNN_nbawalkod(height,node2vec_dim)
+            if model_type == 'nba_DCNN':
+                model = nba_DCNN(height,node2vec_dim)
                 model.compile(loss='mean_squared_error', optimizer= opt, metrics=['accuracy'])
                 model.fit([x_train,line_train,last_5_train,one_hot_train],y_train, 
                             epochs = 20, batch_size = 15, validation_split = 0.05,callbacks = [call_backs]) 
@@ -577,8 +656,8 @@ def main():
 
 
             
-            if model_type == 'nbawalkod':
-                x_test, line_test, last_5_test, test_y,one_hot_test = construct_from_data.Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,
+            if model_type == 'nba_DCNN':
+                x_test, line_test, last_5_test, test_y,one_hot_test = construct_from_data.Test_Set_nba_DCNN(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,
                                                                             feature_node2vec,feature_node2vec_Veg,height,node2vec_dim,day,year)
 
                 Pred = model.predict([x_test,line_test,last_5_test,one_hot_test])
@@ -632,9 +711,14 @@ def main():
             results= np.round(Pred,decimals = 1)
             games = np.concatenate((games,Pred),axis = 1)
 
-            test_count = test_count + games.shape[0]
+            if day != stop_day-1:
 
-            test_games_all[(test_count - games.shape[0]):test_count,:] = games 
+                test_count = test_count + games.shape[0]
+
+
+                test_games_all[(test_count - games.shape[0]):test_count,:] = games
+
+
 
 
             gameteams = np.concatenate((gameteams,results),axis = 1)
@@ -647,7 +731,7 @@ def main():
             print(df1)
 
             if today == day+1:
-                if model_type == 'nbawalkod':
+                if model_type == 'nba_DCNN':
                     df.to_excel('predictions/'+datestring+'_DCNN_predictions.xls', header = ['Home','Away',model_type + ' prediction'],index=False)
 
                 if model_type == 'nba_gen':
@@ -675,6 +759,7 @@ def main():
 
 
 
+
     print(model_type)
     print(startstring + ' to ' + stopstring)
 
@@ -699,5 +784,82 @@ def main():
 
 
 
+    M_Graph = construct_from_data.Model_Graph(test_games_all,schedule,day)
+
+    args_M = node2vec_stack.node2vec_input(M_Graph,'emb/NBA'+str(year)+'node2vec_OffDef.txt',node2vec_dim,n2v_walklen,
+                                                            n2v_numwalks,n2v_wsize,n2v_iter,n2v_workers,node2vec_p,node2vec_q,True,True,False,False)
+
+    featurevecs = node2vec_stack.feat_N(args_M)
+
+    feature_node2vec_M = np.zeros((31,node2vec_dim),dtype = float)
+
+    for j in range(31):
+        feature_node2vec_M[j,:] = featurevecs[str(j)]
+
+
+
+
+    vec = construct_from_data.Discriminator_Training_Set_GAT(Data_Full,test_games_all,
+                                                         feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,feature_node2vec_M,M_Graph,day)
+
+    x_train = vec[0]
+    y_train = vec[1]
+    line_train = vec[2]
+    model_train = vec[3]
+    feature_train = vec[4]
+    A_Train = vec[5]
+    feature_Veg_train = vec[6]
+    A_Veg_train = vec[7]
+    feature_M_train = vec[8]
+    M_Graph_train = vec[9]
+    last_5_train = vec[10]
+    one_hot = vec[11]
+
+
+
+    model = discriminator(node2vec_dim)
+    model.compile(loss='binary_crossentropy', optimizer= opt, metrics=['accuracy'])
+    model.fit([x_train,line_train,model_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,feature_M_train,
+               M_Graph_train,last_5_train,one_hot],y_train, epochs = 10,batch_size = 1,validation_split = 0.1,callbacks = [call_backs])
+    model.summary()
+
+
+    vec = construct_from_data.Discriminator_Test_Set_GAT(Data_Full,games,
+                                                         feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,feature_node2vec_M,M_Graph,day)
+
+
+    x_test = vec[0]
+    line_test = vec[1]
+    model_test = vec[2]
+    feature_test = vec[3]
+    A_Test = vec[4]
+    feature_Veg_test = vec[5]
+    A_Veg_test = vec[6]
+    feature_M_test = vec[7]
+    M_Graph_test = vec[8]
+    last_5_test = vec[9]
+    one_hot = vec[10]
+
+    Pred2 = model.predict([x_test,line_test,model_test,feature_test,A_Test,feature_Veg_test,A_Veg_test,feature_M_test,
+                         M_Graph_test,last_5_test,one_hot_test],batch_size=1)
+
+    Pred2 = np.round(Pred2,decimals = 2)
+
+    gameteams = np.concatenate((gameteams,Pred2),axis = 1)
+    gameteams = gameteams[:,0:4]
+
+    df = pd.DataFrame(gameteams)
+    df.style.set_properties(**{'text-align': 'left'})
+    df1 = df.to_string(index=False,header = False)
+
+    print(df1)
+
+
+    if today == day+1:
+        df.to_excel('predictions/'+datestring+'_GIN_predictions.xls', header = ['Home','Away',model_type + ' prediction','model_confidence'],index=False)
+
+
+
 if __name__ == "__main__":
     main()
+

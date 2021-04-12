@@ -132,6 +132,8 @@ def main():
 
     with open('pickles/NBA_Data_pickled/' + str(year) + 'NBAData.pkl', 'wb') as Data_in:  
         pickle.dump(Data_Full,Data_in)
+
+    pdb.set_trace()
     
     
 

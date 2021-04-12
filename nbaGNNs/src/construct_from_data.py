@@ -15,6 +15,12 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
 
     Data_Cleared = np.zeros((364,36,30),dtype = object) 
 
+    for i in range(Data_Full.shape[2]):
+        for j in range(Data_Full.shape[1]):
+            for k in range(Data_Full.shape[0]):
+                if Data_Full[k,j,i] is None:
+                    Data_Full[k,j,i] = 0
+
     for k in range(30):
         for r in range(stop):
             Data_Cleared[r,:,k] = Data_Full[r,:,k]
@@ -62,7 +68,13 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
             
         for d in range(364):
             if schedule[t,d] != -1:
-                ptsd = Data_Cleared[d,8,t]-Data_Cleared[d,9,t]
+
+                if Data_Cleared[d,8,t] is None:
+                    ptsd = 0
+
+                else:
+                    ptsd = Data_Cleared[d,8,t]-Data_Cleared[d,9,t]
+
                 if ptsd >= 0:
                     PtsVec[d] = 0
                 elif ptsd < 0:
@@ -1260,6 +1272,7 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
          + weights[0,9]*TOoff + weights[0,10]*TS
 
 
+
     for i in range(ObyD.shape[0]):
         nzc = np.count_nonzero(ObyD[i,:])
 
@@ -1271,6 +1284,8 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
                     ObyD[i,j] = 1/(1+ np.exp(-1000*(ObyD[i,j]-mu)))
 
 
+
+
     for i in range(DbyO.shape[0]):
         nzc = np.count_nonzero(DbyO[i,:])
 
@@ -1280,6 +1295,8 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
             for j in range(DbyO.shape[1]):
                 if DbyO[i,j] != 0:
                     DbyO[i,j] = 1/(1 + np.exp(-1000*(DbyO[i,j]-mu)))
+
+
 
 
 
@@ -1311,6 +1328,8 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
 
 
     S_OffDef = utils_data.sto_mat(S_OffDef)
+
+
 
 
 
@@ -1359,7 +1378,7 @@ def PageRank(G_orc):
 
 
 
-def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim):
+def Training_Set_nba_DCNN(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim):
 
     N = Data_Full.shape[2]
 
@@ -1491,7 +1510,7 @@ def Training_Set_nbawalkod(Data_Full,Lines,schedule,HomeAway,day,S_OffDef_stack,
 
 
 
-def Test_Set_nbawalkod(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim,day,year):
+def Test_Set_nba_DCNN(Data_Full,games,testgamecount,S_OffDef_stack,Vegas_Graph_stack,feature_node2vec,feature_node2vec_Veg,height,node2vec_dim,day,year):
 
     N = Data_Full.shape[2]
  
@@ -1933,11 +1952,228 @@ def Vegas_Graph(schedule,Lines,day):
         Vegas_Graph[30,c] = np.sum(Vegas_Graph[:,c])
 
 
+
     Vegas_Graph[30,:] = 1/(np.sum(Vegas_Graph[30,:]))*Vegas_Graph[30,:]
+
+
 
     return Vegas_Graph
 
 
+def Model_Graph(test_games_all,schedule,day):
+
+    Model_Graph = np.zeros((31,31),dtype = float)
+
+
+    for i in range(test_games_all.shape[0]):
+
+        home_team = test_games_all[i,0]
+        away_team = test_games_all[i,1]
+
+
+        if test_games_all[i,7] > 0:
+
+            Model_Graph[away_team,home_team] = Model_Graph[away_team,home_team] + test_games_all[i,7]
+
+        elif test_games_all[i,7] < 0:
+
+            Model_Graph[home_team,away_team] = Model_Graph[home_team,away_team] + -1*test_games_all[i,7]
+
+
+
+    for i in range(30):
+        for j in range(30):
+            gc = 0
+            for k in range(day):
+                if schedule[i,k] == j:
+                    gc = gc + 1
+
+            if gc != 0:
+                Model_Graph[i,j] = Model_Graph[i,j]/gc
+
+
+    for i in range(30):
+        if np.sum(Model_Graph[i,:]) != 0:
+            Model_Graph[i,:] = (1/np.sum(Model_Graph[i,:]))*Model_Graph[i,:]
+
+
+
+    for r in range(30):
+        nonzerocount = 0
+        for col in range(30):
+            if Model_Graph[r,col] != 0:
+                nonzerocount = nonzerocount + 1
+
+        if nonzerocount != 0:
+            Model_Graph[r,30] = 1/nonzerocount
+            Model_Graph[r,:] = 1/(np.sum(Model_Graph[r,:]))*Model_Graph[r,:]
+
+        elif nonzerocount == 0:
+            Model_Graph[r,30] = 1
+
+
+
+    for c in range(30):
+        Model_Graph[30,c] = np.sum(Model_Graph[:,c])
+
+
+    Model_Graph[30,:] = 1/(np.sum(Model_Graph[30,:]))*Model_Graph[30,:]
+
+
+    return Model_Graph
+
+
+def Discriminator_Training_Set_GAT(Data_Full,test_games_all,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,feature_node2vec_M,M_Graph,day):
+
+    game_num = test_games_all.shape[0]
+    N = Data_Full.shape[2]
+
+
+    for j in range(test_games_all.shape[0]):
+        for k in range(test_games_all.shape[1]):
+            if test_games_all[j,k] is None:
+                test_games_all[j,k] = 0
+
+
+
+    x_train = np.zeros((game_num,2),dtype = int)
+    y_train = np.zeros((game_num,2),dtype = float)
+    line_train = np.zeros((game_num,),dtype = float)
+    model_train = np.zeros((game_num,),dtype = float)
+    feature_train = np.zeros((game_num,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
+    feature_Veg_train = np.zeros((game_num,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
+    A_Train = np.zeros((game_num,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
+    A_Veg_train = np.zeros((game_num,A_Veg.shape[0],A_Veg.shape[1]),dtype = int)
+    last_5_train = np.zeros((game_num,10),dtype = float)
+    one_hot = np.zeros((game_num,2*N),dtype = float)
+    feature_M_train = np.zeros((game_num,feature_node2vec_M.shape[0],feature_node2vec_M.shape[1]),dtype = float)
+    M_Graph_train = np.zeros((game_num,M_Graph.shape[0],M_Graph.shape[1]),dtype = int)
+
+
+    for i in range(test_games_all.shape[0]):
+
+        k = test_games_all[i,0]
+        opponent = test_games_all[i,1]
+
+        x_train[i,0] = k
+        x_train[i,1] = int(opponent)
+
+        line_train[i] = test_games_all[i,2]
+        model_train[i] = test_games_all[i,7]
+
+        one_hot[i,test_games_all[i,0]] = 1
+        one_hot[i,test_games_all[i,1]+N] = 1
+
+
+        A_Train[i,:,:] = A_OffDef
+        A_Veg_train[i,:,:] = A_Veg
+        M_Graph_train[i,:,:] = M_Graph
+        A_Train[i,k,opponent+31] = 0
+        A_Train[i,k+31,opponent] = 0
+        A_Train[i,opponent,k+31] = 0
+        A_Train[i,opponent+31,k] = 0
+        feature_train[i,:,:] = feature_node2vec
+        feature_Veg_train[i,:,:] = feature_node2vec_Veg
+        feature_M_train[i,:,:] = feature_node2vec_M
+
+
+
+
+        if test_games_all[i,6] > 5:
+
+            last_5 = Data_Full[(day-5):day,0,test_games_all[i,0]]
+            last_5_opp = Data_Full[(day-5):day,0,test_games_all[i,1]]
+
+            for q in range(5):
+                if last_5[q] != 0:
+                    last_5[q] = 1
+                if last_5_opp[q] != 0:
+                    last_5_opp[q] = 1
+
+        last_5_train[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
+
+
+
+
+        if test_games_all[i,4]-test_games_all[i,5] > test_games_all[i,2] and test_games_all[i,7] > test_games_all[i,2]:
+            y_train[i,0] = 1
+
+        elif test_games_all[i,4]-test_games_all[i,5] < test_games_all[i,2] and test_games_all[i,7] < test_games_all[i,2]:
+            y_train[i,0] = 1
+
+        else:
+            y_train[i,1] = 1
+
+
+
+
+
+    return x_train,y_train,line_train,model_train,feature_train,A_Train,feature_Veg_train,A_Veg_train,feature_M_train,M_Graph_train,last_5_train,one_hot
+
+
+
+
+def Discriminator_Test_Set_GAT(Data_Full,games,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,feature_node2vec_M,M_Graph,day):
+
+    game_num = games.shape[0]
+    N = Data_Full.shape[2]
+
+
+    x_test = np.zeros((game_num,2),dtype = int)
+    line_test = np.zeros((game_num,),dtype = float)
+    model_test = np.zeros((game_num,),dtype = float)
+    feature_test = np.zeros((game_num,feature_node2vec.shape[0],feature_node2vec.shape[1]),dtype = float)
+    feature_Veg_test = np.zeros((game_num,feature_node2vec_Veg.shape[0],feature_node2vec_Veg.shape[1]),dtype = float)
+    A_Test = np.zeros((game_num,A_OffDef.shape[0],A_OffDef.shape[1]),dtype = int)
+    A_Veg_test = np.zeros((game_num,A_Veg.shape[0],A_Veg.shape[1]),dtype = int)
+    last_5_test = np.zeros((game_num,10),dtype = float)
+    one_hot = np.zeros((game_num,2*N),dtype = float)
+    feature_M_test = np.zeros((game_num,feature_node2vec_M.shape[0],feature_node2vec_M.shape[1]),dtype = float)
+    M_Graph_test = np.zeros((game_num,M_Graph.shape[0],M_Graph.shape[1]),dtype = int)
+
+
+    for i in range(games.shape[0]):
+
+        k = games[i,0]
+        opponent = games[i,1]
+
+
+        x_test[i,0] = k
+        x_test[i,1] = int(opponent)
+
+        line_test[i] = games[i,2]
+        model_test[i] = games[i,7]
+
+        one_hot[i,games[i,0]] = 1
+        one_hot[i,games[i,1]+N] = 1
+
+
+        A_Test[i,:,:] = A_OffDef
+        A_Veg_test[i,:,:] = A_Veg
+        M_Graph_test[i,:,:] = M_Graph
+        A_Test[i,k,opponent+31] = 0
+        A_Test[i,k+31,opponent] = 0
+        A_Test[i,opponent,k+31] = 0
+        A_Test[i,opponent+31,k] = 0
+        feature_test[i,:,:] = feature_node2vec
+        feature_Veg_test[i,:,:] = feature_node2vec_Veg
+        feature_M_test[i,:,:] = feature_node2vec_M
+
+
+
+
+        if games[i,6] > 5:
+
+            last_5 = Data_Full[(day-5):day,0,games[i,0]]
+            last_5_opp = Data_Full[(day-5):day,0,games[i,1]]
+
+            for q in range(5):
+                if last_5[q] != 0:
+                    last_5[q] = 1
+                if last_5_opp[q] != 0:
+                    last_5_opp[q] = 1
+
+        last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
 
 
@@ -1947,11 +2183,7 @@ def Vegas_Graph(schedule,Lines,day):
 
 
 
-
-
-
-
-
+    return x_test,line_test,model_test,feature_test,A_Test,feature_Veg_test,A_Veg_test,feature_M_test,M_Graph_test,last_5_test,one_hot
 
 
                 
