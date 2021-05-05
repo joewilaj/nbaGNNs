@@ -113,14 +113,14 @@ def nba_gen(node2vec_dim):
     one_hot_input = Input(shape=(60,))
 
 
-    conv = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='mean', activation='elu', use_bias=True,
+    conv = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='sum', activation='relu', use_bias=True,
                                 kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
                                 bias_regularizer=None, activity_regularizer=None, 
                                 kernel_constraint=None, bias_constraint=None)([node2vec_input,A_input_sp])
 
 
 
-    conv_veg = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='mean', activation='elu', use_bias=True,
+    conv_veg = spektral.layers.GeneralConv(channels= channels, batch_norm=True, dropout=0.0, aggregate='sum', activation='relu', use_bias=True,
                                 kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None,
                                 bias_regularizer=None, activity_regularizer=None, 
                                 kernel_constraint=None, bias_constraint=None)([node2vec_Veg_input,A_Veg_input_sp])
@@ -391,8 +391,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,3,1)
-    stopdate = datetime.datetime(year,4,12)
+    startdate = datetime.datetime(year,4,1)
+    stopdate = datetime.datetime(year,5,5)
 
 
 
@@ -429,6 +429,8 @@ def main():
 
 
     TeamList_Lines = TeamLists[:,3]
+
+    TeamList_plot = TeamLists[:,4]
 
 
 
@@ -779,8 +781,10 @@ def main():
             print('MSE: '  + str(round((loss/runs),1)))
 
 
-    if today != day + 1:
-        utils_data.eval_plots(test_games_all,window)
+
+    utils_data.eval_plots(test_games_all,window)
+    utils_data.eval_plots_Teams(test_games_all,window,TeamList_plot)
+
 
 
 

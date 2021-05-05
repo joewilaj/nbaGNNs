@@ -401,6 +401,73 @@ def eval_plots(test_games_all,window):
 
 
 
+def eval_plots_Teams(test_games_all,window,TeamList):
+
+    freq_count_wins = np.zeros((30,),dtype = float)
+    freq_count_losses = np.zeros((30,),dtype = float)
+
+    for i in range(test_games_all.shape[0]):
+
+        if (test_games_all[i,4] !=0 or test_games_all[i,5] !=0) and (test_games_all[i,4] is not None):
+
+            if abs(((test_games_all[i,4]-test_games_all[i,5])-test_games_all[i,2])) > window:
+
+                ht = test_games_all[i,0]
+                at = test_games_all[i,1]
+
+                if test_games_all[i,4]-test_games_all[i,5] > test_games_all[i,2] and test_games_all[i,7] > test_games_all[i,2]:
+
+
+                    freq_count_wins[ht] = freq_count_wins[ht] + 1
+
+
+                elif test_games_all[i,4]-test_games_all[i,5] < test_games_all[i,2] and test_games_all[i,7] < test_games_all[i,2]:
+
+
+                    freq_count_wins[at] = freq_count_wins[at] + 1
+
+
+                elif test_games_all[i,4]-test_games_all[i,5] == test_games_all[i,2]:
+                    pass
+
+
+                elif test_games_all[i,4]-test_games_all[i,5] < test_games_all[i,2] and test_games_all[i,7] > test_games_all[i,2]:
+
+                    freq_count_losses[ht] = freq_count_losses[ht] + 1
+
+
+                elif test_games_all[i,4]-test_games_all[i,5] > test_games_all[i,2] and test_games_all[i,7] < test_games_all[i,2]:
+
+                    freq_count_losses[at] = freq_count_losses[at] + 1
+
+
+    labels = TeamList
+
+    x = np.arange(len(labels))
+
+    width = 0.35  
+    
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(x - width/2, freq_count_wins, width, label='Wins',color = 'lawngreen')
+    rects2 = ax.bar(x + width/2, freq_count_losses, width, label='Losses',color = 'tomato')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_xlabel('Team')
+    ax.set_title('Model Record w/ Team')
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.legend()
+
+
+
+
+    fig.tight_layout()
+    plt.show()
+
+    return
+
+
+
 
 
 
