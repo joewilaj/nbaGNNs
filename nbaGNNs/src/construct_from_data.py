@@ -6,6 +6,7 @@ import pickle
 import sys
 import pdb
 import utils_data
+import datetime
 
 
 
@@ -51,8 +52,8 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
     PacePROB = np.zeros((30,364),dtype = float)
     FTAPROB = np.zeros((30,364),dtype = float)
 
-    alphaHome = weights[0,17];
-    alphaAway = weights[0,18];
+    alphaHome = weights[0,16];
+    alphaAway = weights[0,17];
 
     #Construct G_orc
 
@@ -1264,12 +1265,12 @@ def construct_S_orc(Data_Full,schedule,HomeAway,weights,stop):
    + weights[0,8]*TOoff + weights[0,9]*TS + weights[0,10]*STL + weights[0,11]*BLK \
    + weights[0,12]*TO + weights[0,13]*DRB + weights[0,14]*eFGDef + weights[0,15]*AstDef
 
-    ObyD = weights[0,11]*STL + weights[0,12]*BLK + weights[0,1]*Pts \
-         + weights[0,13]*TO + weights[0,14]*DRB + weights[0,15]*eFGDef + weights[0,16]*AstDef
+    ObyD = weights[0,10]*STL + weights[0,11]*BLK + weights[0,0]*Pts \
+         + weights[0,12]*TO + weights[0,13]*DRB + weights[0,14]*eFGDef + weights[0,15]*AstDef
 
-    DbyO = weights[0,0]*Pts + weights[0,2]*eFG + weights[0,3]*Orb +weights[0,4]*FT \
-         + weights[0,5]*FTA + weights[0,6]*Ast + weights[0,8]*P100 \
-         + weights[0,9]*TOoff + weights[0,10]*TS
+    DbyO = weights[0,0]*Pts + weights[0,1]*eFG + weights[0,2]*Orb +weights[0,3]*FT \
+         + weights[0,4]*FTA + weights[0,5]*Ast + weights[0,7]*P100 \
+         + weights[0,8]*TOoff + weights[0,9]*TS
 
 
 
@@ -2025,6 +2026,10 @@ def Model_Graph(test_games_all,schedule,day):
 
 def Discriminator_Training_Set_GAT(Data_Full,test_games_all,feature_node2vec,A_OffDef,feature_node2vec_Veg,A_Veg,feature_node2vec_M,M_Graph,day):
 
+    year = 2021
+    now = datetime.datetime.now()
+    today = (now-datetime.datetime(year-1,10,12)).days
+
     game_num = test_games_all.shape[0]
     N = Data_Full.shape[2]
 
@@ -2079,7 +2084,7 @@ def Discriminator_Training_Set_GAT(Data_Full,test_games_all,feature_node2vec,A_O
 
 
 
-        if test_games_all[i,6] > 5:
+        if test_games_all[i,6] > 5 or today > 5:
 
             last_5 = Data_Full[(day-5):day,0,test_games_all[i,0]]
             last_5_opp = Data_Full[(day-5):day,0,test_games_all[i,1]]
@@ -2089,6 +2094,7 @@ def Discriminator_Training_Set_GAT(Data_Full,test_games_all,feature_node2vec,A_O
                     last_5[q] = 1
                 if last_5_opp[q] != 0:
                     last_5_opp[q] = 1
+            
 
         last_5_train[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 
@@ -2117,6 +2123,10 @@ def Discriminator_Test_Set_GAT(Data_Full,games,feature_node2vec,A_OffDef,feature
 
     game_num = games.shape[0]
     N = Data_Full.shape[2]
+
+    year = 2021
+    now = datetime.datetime.now()
+    today = (now-datetime.datetime(year-1,10,12)).days
 
 
     x_test = np.zeros((game_num,2),dtype = int)
@@ -2162,7 +2172,7 @@ def Discriminator_Test_Set_GAT(Data_Full,games,feature_node2vec,A_OffDef,feature
 
 
 
-        if games[i,6] > 5:
+        if games[i,6] > 5 or today > 5: 
 
             last_5 = Data_Full[(day-5):day,0,games[i,0]]
             last_5_opp = Data_Full[(day-5):day,0,games[i,1]]
@@ -2172,6 +2182,9 @@ def Discriminator_Test_Set_GAT(Data_Full,games,feature_node2vec,A_OffDef,feature
                     last_5[q] = 1
                 if last_5_opp[q] != 0:
                     last_5_opp[q] = 1
+
+
+        
 
         last_5_test[i,:] = np.concatenate((last_5,last_5_opp),axis = -1)
 

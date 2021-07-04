@@ -466,6 +466,89 @@ def eval_plots_Teams(test_games_all,window,TeamList):
 
     return
 
+def Manual_Data(Data_Full):
+
+    year = 2021
+
+    TeamLists = pd.read_excel('data/TeamLists.xls',sheet_name = 0,header = None)
+    TeamLists = TeamLists.to_numpy(dtype = object,copy = True)
+
+
+    TeamList_Dat = TeamLists[:,5]
+    TeamList = TeamLists[:,2]
+
+
+    now = datetime.datetime.now()
+    datestring = now.strftime("%m_%d_%Y")
+
+
+    for i in range(30):
+
+        Team_Sheet = pd.read_excel('data/ManualData.xls',sheet_name = i,header = None)
+        Team_Sheet = Team_Sheet.to_numpy(dtype = object,copy = True)
+        
+
+        if Team_Sheet[0,0] == 0:
+
+            continue
+
+        else:
+
+            for j in range(Team_Sheet.shape[0]):
+
+                
+
+                game_date =  Team_Sheet[j,2].to_pydatetime()
+                daynum = (game_date - datetime.datetime(year-1,10,12)).days
+
+                Data_Full[daynum,8,i] = Team_Sheet[j,6]
+                Data_Full[daynum,9,i] = Team_Sheet[j,7]
+
+                if Team_Sheet[j,3] == '@':
+
+                    Data_Full[daynum,6,i] = 'Away'
+
+                else:
+                    Data_Full[daynum,6,i] = 'Home'
+
+                for k in range(30):
+                    if Team_Sheet[j,4] == TeamList_Dat[k]:
+                        Data_Full[daynum,7,i] = TeamList[k]
+                        
+
+                    
+                Data_Full[daynum,0,i] = Team_Sheet[j,0]
+                Data_Full[daynum,35,i] = 0
+                Data_Full[daynum,34,i] = 0           
+
+                Data_Full[daynum,10,i] = Team_Sheet[j,8]
+                Data_Full[daynum,11,i] = Team_Sheet[j,9]
+                Data_Full[daynum,12,i] = Team_Sheet[j,18]
+                Data_Full[daynum,13,i] = Team_Sheet[j,15]
+                Data_Full[daynum,14,i] = 0
+                Data_Full[daynum,15,i] = Team_Sheet[j,17]
+                Data_Full[daynum,17,i] = Team_Sheet[j,24]
+                Data_Full[daynum,18,i] = 0
+                Data_Full[daynum,19,i] = 0
+                Data_Full[daynum,20,i] = Team_Sheet[j,11]
+                Data_Full[daynum,21,i] = Team_Sheet[j,20]
+                Data_Full[daynum,22,i] = Team_Sheet[j,16]
+                Data_Full[daynum,23,i] = 0
+                Data_Full[daynum,24,i] = Team_Sheet[j,19]
+                Data_Full[daynum,26,i] = Team_Sheet[j,13]
+                Data_Full[daynum,27,i] = 0
+                Data_Full[daynum,28,i] = 0
+
+    with open('pickles/NBA_Data_pickled/' + str(year) + 'NBAData.pkl', 'wb') as Data_in:  
+        pickle.dump(Data_Full,Data_in)
+
+
+    return        
+            
+
+    
+
+
 
 
 

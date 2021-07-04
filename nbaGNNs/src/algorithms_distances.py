@@ -57,39 +57,22 @@ def get_compact_degree_lists_vertices(g, vertices, calc_until_layer, is_directed
 def get_compact_degree_lists(g, root, calc_until_layer, is_directed, in_degrees, out_degrees):
 
     """
-
     Perform BFS to compute *compact* degree sequences at each k-distance ring around a given node.
-
     Args:
-
         g: dict
-
             the graph dictionary
-
         root: int
-
             the initial node
-
         calc_until_layer: int
-
             the maximum distance
-
         is_directed: boolean
-
             whether the graph is directed
-
         in_degrees: dict
-
             (weighted) incoming degree per node (directed graphs only)
-
         out_degrees: dict
-
             (weighted outgoing degree per node (directed graphs only)
-
     Returns:
-
     A dictionary mapping depths (int) to CHANGE HERE
-
     """
 
     t0 = time()
@@ -215,43 +198,24 @@ def get_compact_degree_lists(g, root, calc_until_layer, is_directed, in_degrees,
 def get_degree_lists(g, root, calc_until_layer, is_directed, in_degrees, out_degrees):
 
     """
-
     Perform BFS to compute degree sequences at each k-distance ring around a given node.
-
     Args:
-
         g: dict
-
             the graph dictionary
-
         root: int
-
             the initial node
-
         calc_until_layer: int
-
             the maximum distance
-
         is_directed: boolean
-
             whether the graph is directed
-
         in_degrees: dict
-
             (weighted) incoming degree per node (directed graphs only)
-
         out_degrees: dict
-
             (weighted outgoing degree per node (directed graphs only)
-
     Returns:
-
     A dictionary mapping depths (int) to:
-
         a) ordered degree sequences (np.array), if undirected, or
-
         b) pairs of ordered in-degree and out-degree sequences (np.array), if directed
-
     """
 
     t0 = time()
@@ -659,31 +623,17 @@ def split_degree_list(part, c, G, compact_degree, a_vertices):
 def calc_distances(part, compact_degree=False, is_directed=False):
 
     """
-
     Compute the structural distance between pairs of nodes within a precomputed chunk of given ID.
-
     Only considers pairs that have previously been identified as (roughly) similar in terms of undirected degree.
-
     Args:
-
         part: int
-
             index of the chunk of vertices to be used
-
         compact_degree: boolean
-
             indicating whether to use the compact degree optimisation
-
         is_directed: boolean
-
             whether the graph is directed
-
-
-
     Returns:
-
         None (stores pickle on disk)
-
     """
 
     vertices = restore_variable_from_disk('split-vertices-' + str(part))
@@ -749,41 +699,22 @@ def calc_distances(part, compact_degree=False, is_directed=False):
 def calc_distances_all(vertices, list_vertices, degree_list, part, compact_degree=False, is_directed=False):
 
     """
-
     Compute the structural distance between any pair of nodes.
-
     Args:
-
         vertices: list
-
             a chunk of vertices to compute distances between
-
         list_vertices: list
-
             a list of lists, containing for each vertex all other vertices to be compared with
-
         degree_list: dict
-
             nested dictionary (vertex -> layer -> degree sequence)
-
         part: int
-
             index of the current chunk of vertices
-
         compact_degree: boolean
-
             indicating whether to use the compact degree optimisation
-
         is_directed: boolean
-
             whether the graph is directed
-
-
-
     Returns:
-
         None (stores pickle on disk)
-
     """
 
     distances = {}
@@ -867,19 +798,11 @@ def _deg_seq_dist(seq1, seq2, dist_func, is_directed):
 def _consolidate_distances(distances):
 
     """
-
     In-place summing up of distances along the layers
-
     Args:
-
         distances: nested dictionary (v1, v2 -> layer -> distance)
-
-
-
     Returns:
-
         None (stores pickle on disk)
-
     """
 
     logging.info('Consolidating distances...')
@@ -1025,17 +948,11 @@ def exec_bfs(G, workers, calc_until_layer, is_directed, in_degrees, out_degrees,
 def generate_distances_network_part1(workers):
 
     """
-
     Load and merge distances from all chunks. Rearrange them grouped by layer:
-
         layer -> v1, v2 -> distance
-
     Args:
-
         workers: int
-
             Number of chunks, needed for loading distances from disk
-
     """
 
     parts = workers
@@ -1083,17 +1000,11 @@ def generate_distances_network_part1(workers):
 def generate_distances_network_part2(workers):
 
     """
-
     Construct the skeleton of the context graph: a symmetric directed layer graph
-
     with edges between each pair of nodes for which a distance (at that layer) exists.
-
     Args:
-
         workers: int
-
             Number of chunks, needed for loading distances from disk
-
     """
 
     parts = workers
@@ -1149,13 +1060,9 @@ def generate_distances_network_part2(workers):
 def generate_distances_network_part3():
 
     """
-
     Create a probability weight for each edge in the layer graph. Weights are stored in a separate dictionary
-
     per layer, of the form (node -> list of weights) [N.B. order of weights = order of neighbours]
-
     Also execute some preprocessing for the alias method.
-
     """
 
     layer = 0
@@ -1237,11 +1144,8 @@ def generate_distances_network_part3():
 def generate_distances_network_part4():
 
     """
-
     Merge the (unweighted) directed context graphs into a single graph containing
-
     all layers, represented as a dictionary (layer -> node -> list of neighbours)
-
     """
 
     logging.info('Consolidating graphs...')
@@ -1277,11 +1181,8 @@ def generate_distances_network_part4():
 def generate_distances_network_part5():
 
     """
-
     Merge the dictionaries holding the precomputed J-values of the alias method into a
-
     single dictionary containing all layers (layer -> node -> J)
-
     """
 
     alias_method_j_c = {}
@@ -1313,11 +1214,8 @@ def generate_distances_network_part5():
 def generate_distances_network_part6():
 
     """
-
     Merge the dictionaries holding the precomputed q-values of the alias method into a
-
     single dictionary containing all layers (layer -> node -> q)
-
     """
 
     alias_method_q_c = {}
@@ -1349,17 +1247,11 @@ def generate_distances_network_part6():
 def generate_distances_network(workers):
 
     """
-
     Construct the layered context graphs in six steps, each of which
-
     is implemented in a separate method.
-
     Args:
-
         workers: int
-
             Number of chunks
-
     """
 
     t0 = time()
@@ -1483,13 +1375,9 @@ def generate_distances_network(workers):
 def alias_setup(probs):
 
     """
-
     Compute utility lists for non-uniform sampling from discrete distributions.
-
     Refer to https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/
-
     for details
-
     """
 
     K = len(probs)
@@ -1540,4 +1428,3 @@ def alias_setup(probs):
 
 
 
-    return J, q

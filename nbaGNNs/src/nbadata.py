@@ -70,7 +70,7 @@ def main():
             game_date = game.datetime
             daynum = (game_date - datetime.datetime(year-1,10,12)).days
 
-            if daynum >= today - 2:
+            if daynum >= today - 30:
 
                 box = game.boxscore
 

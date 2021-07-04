@@ -391,8 +391,8 @@ def main():
 
     #select day range on which to test the model
 
-    startdate = datetime.datetime(year,4,1)
-    stopdate = datetime.datetime(year,5,5)
+    startdate = datetime.datetime(year,6,1)
+    stopdate = datetime.datetime(year,7,6)
 
 
 
@@ -413,6 +413,8 @@ def main():
     datestring = now.strftime("%m_%d_%Y")
 
     today = (now-datetime.datetime(year-1,10,12)).days
+
+    
 
 
     TeamLists = pd.read_excel('data/TeamLists.xls',sheet_name = 0,header = None)
@@ -445,6 +447,15 @@ def main():
 
     with open('pickles/NBA_Data_pickled/'+str(year)+'NBAData.pkl', 'rb') as Data: 
         Data_Full = pickle.load(Data)
+
+
+    utils_data.Manual_Data(Data_Full)
+
+
+
+    with open('pickles/NBA_Data_pickled/'+str(year)+'NBAData.pkl', 'rb') as Data: 
+        Data_Full = pickle.load(Data)
+
 
 
 
@@ -859,8 +870,7 @@ def main():
     print(df1)
 
 
-    if today == day+1:
-        df.to_excel('predictions/'+datestring+'_GIN_predictions.xls', header = ['Home','Away',model_type + ' prediction','model_confidence'],index=False)
+    df.to_excel('predictions/'+datestring+'_GIN_predictions.xls', header = ['Home','Away',model_type + ' prediction','model_confidence'],index=False)
 
 
 
